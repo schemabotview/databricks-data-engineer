@@ -1,0 +1,83 @@
+This notebook builds on the Delta Lake foundations covered in the Apache Spark repo. Those notebooks explained the transaction log, ACID guarantees, time travel, OPTIMIZE, Z-ORDER, VACUUM, constraints, and CLONE in depth. Here we focus on the Databricks-specific angle: how Delta tables are registered and organised, the different ways to create them, column mapping, liquid clustering, and deletion vectors.
+
+Managed vs External Tables.
+
+This is the most exam-tested distinction in this entire section, so let's be precise about it.
+
+A managed table is one where Databricks controls the full lifecycle — both the metadata registered in the catalog and the actual data files on cloud storage. When you drop a managed table, both the catalog entry and the underlying Parquet and Delta log files are permanently deleted. The data is gone.
+
+An external table is one where you specify the storage location explicitly using the LOCATION keyword when creating the table. The catalog registers the table definition and points to that location, but when you drop the table, only the catalog entry is removed. The data files remain on cloud storage exactly where they were. You own the data; Databricks just tracks it.
+
+The practical implication is this. Use managed tables for data that is created and consumed entirely within Databricks. Use external tables for data that needs to survive a table drop, data that is shared with other tools outside Databricks, or data that already exists in cloud storage.
+
+The three-level namespace.
+
+Unity Catalog introduces a three-level naming convention for all data assets: catalog, then schema, then table. A catalog is the top-level container. A schema — which Spark also calls a database — groups related tables within a catalog. A table, view, or function lives inside a schema.
+
+You qualify a table fully as catalog dot schema dot table. You can also set a default catalog and schema using USE CATALOG and USE SCHEMA, after which unqualified names resolve to that context.
+
+Without Unity Catalog, using the legacy Hive metastore, only two levels exist: schema and table. The migration from two-level to three-level naming is one of the key changes Unity Catalog introduces.
+
+There are also special catalog types. The hive underscore metastore catalog is the built-in legacy catalog kept for backward compatibility. Foreign catalogs point to external systems through Lakehouse Federation. These are covered in the Unity Catalog notebook.
+
+Four Ways to Create a Delta Table.
+
+There are four common patterns, and knowing when to use each matters for the exam.
+
+The first is a CREATE TABLE statement with an explicit schema definition. You define column names and types upfront. The table is empty until you insert data. This is the right approach when you know the schema precisely and want schema enforcement from the start.
+
+The second is CREATE TABLE AS SELECT, commonly called CTAS. This creates a table and populates it from a query in one step. The schema is inferred from the query — you cannot explicitly specify column types. CTAS does not support PARTITIONED BY in the standard form, but you can use liquid clustering with CLUSTER BY.
+
+The third is the DataFrame saveAsTable method. This writes a DataFrame and registers it as a managed table in the metastore in one step. It is the PySpark equivalent of CTAS.
+
+The fourth pattern separates the write from the registration. You write files to a cloud storage path using the DataFrame save method, then register those files as an external table using CREATE TABLE with a LOCATION clause. This is common when data already exists on storage before any catalog entry is created — Auto Loader pipelines often follow this pattern.
+
+Column Mapping.
+
+By default, Delta Lake stores column names inside the Parquet files themselves. If you rename or drop a column, Delta must rewrite every file in the table to update those column names in the physical storage. On a large table, this is extremely expensive.
+
+Column mapping decouples the logical column name from the physical storage name. The SQL layer sees the logical name you define. The Parquet files keep their original physical names. Rename and drop operations become metadata-only — instant, with zero data rewrite.
+
+You enable column mapping by setting a table property called delta dot columnMapping dot mode to the value name. You also need to set the minimum reader version to 2 and the minimum writer version to 5, because older Spark clients that do not support these protocol versions will be unable to read the table after the change.
+
+Once enabled, ALTER TABLE RENAME COLUMN and ALTER TABLE DROP COLUMN both execute instantly regardless of table size.
+
+Liquid Clustering.
+
+Traditional partitioning and Z-ORDER have real limitations. Partitioning on a high-cardinality column like customer ID creates millions of tiny directories, which is worse than no partitioning at all. Z-ORDER must be fully re-run on every OPTIMIZE pass. And changing the partition column requires rewriting the entire table.
+
+Liquid clustering, introduced in Databricks Runtime 13.3, is a modern alternative that solves all three problems.
+
+Instead of static partition directories, liquid clustering uses Hilbert curves — a space-filling curve that maps multi-dimensional data to a one-dimensional order in a way that preserves locality. Related rows end up in the same files, regardless of cardinality.
+
+Liquid clustering is incremental. When you run OPTIMIZE, only the files that have changed since the last run are clustered. Existing clustered files are left alone. This makes repeated OPTIMIZE runs much cheaper.
+
+Changing the clustering columns is a metadata-only operation using ALTER TABLE CLUSTER BY. Future OPTIMIZE runs will cluster on the new columns. Old files remain clustered on the previous columns until they are rewritten by subsequent OPTIMIZE passes.
+
+You specify liquid clustering at table creation time using CLUSTER BY followed by the column names. Liquid clustering and PARTITIONED BY are mutually exclusive — you use one or the other on a given table.
+
+Deletion Vectors.
+
+When you delete or update rows in a Delta table without deletion vectors, Spark must rewrite the entire Parquet file that contains those rows. Even if you delete a single row from a one-gigabyte file, the whole file is rewritten. On large tables with frequent small deletes, this adds up quickly.
+
+Deletion vectors change the approach entirely. Instead of rewriting the file, Delta writes a tiny sidecar file that records which row positions have been deleted or superseded. Readers merge this sidecar with the data file on the fly and skip the affected rows. The data file itself is not touched.
+
+The result is that DELETE and UPDATE operations become dramatically faster. The trade-off is a small read overhead — each read must check the sidecar — and the deleted positions accumulate until OPTIMIZE runs a full compaction pass and rewrites the files cleanly.
+
+You enable deletion vectors by setting a table property called delta dot enableDeletionVectors to true. Deletion vectors require Delta protocol version 3 dot 0 and Databricks Runtime 12 dot 2 or later.
+
+Summary.
+
+Managed tables give Databricks full lifecycle control — dropping a managed table deletes the data. External tables, defined with the LOCATION keyword, keep data on cloud storage when the table is dropped.
+
+The three-level namespace — catalog, schema, table — is Unity Catalog's organisation model. Two levels — schema and table — exist in the legacy Hive metastore.
+
+Delta tables can be created with explicit DDL, with CREATE TABLE AS SELECT, with the DataFrame saveAsTable method, or by writing files first and then registering them with a LOCATION clause.
+
+Column mapping makes RENAME COLUMN and DROP COLUMN instant metadata operations, avoiding full file rewrites. It requires upgrading the table's protocol version.
+
+Liquid clustering is the modern replacement for partitioning and Z-ORDER. It is incremental, supports any cardinality, and allows changing clustering columns without rewriting data.
+
+Deletion vectors make deletes and updates fast by writing tiny sidecar files instead of rewriting the affected data files. OPTIMIZE eventually cleans them up.
+
+In the next topic, we will look at querying raw files directly with Spark SQL — reading CSV, JSON, Parquet, and Delta files before they are registered as tables.
