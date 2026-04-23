@@ -1,0 +1,87 @@
+Before writing any data pipelines, you need to understand the environment you're working in. The Databricks workspace is where all your work lives — notebooks, jobs, data, and code. The cluster is the compute that runs it. Understanding how these fit together is essential for the Databricks Data Engineer Associate exam.
+
+Workspace Structure.
+
+A workspace is an isolated Databricks environment, typically one per team or environment such as development or production. Inside a workspace you have several areas.
+
+Notebooks are interactive documents that support Python, SQL, Scala, and R — all in one place. Repos are Git-backed folders that sync with GitHub, GitLab, or Bitbucket, so you can develop in version-controlled code. Files hold arbitrary content like configs, scripts, or small datasets. Clusters are compute definitions. Jobs are automated pipeline schedules. SQL Warehouses are dedicated compute for Databricks SQL and business intelligence tools. Delta Live Tables holds declarative pipeline definitions. And Unity Catalog is the data governance layer covering catalogs, schemas, and tables.
+
+Alongside the workspace is DBFS, the Databricks File System. DBFS is a distributed file system mounted on every cluster that abstracts the underlying cloud object storage — whether that's S3, Azure Data Lake Storage, or Google Cloud Storage. It gives you a familiar file-path interface. The default location for managed Delta tables is under the user hive warehouse path. Files uploaded via the UI land in FileStore. External buckets are accessed through mount points.
+
+With Unity Catalog, you should prefer external locations and volumes over DBFS mounts. DBFS is still present but is a legacy pattern that lacks proper access control and auditing.
+
+Two Cluster Types.
+
+Every piece of Spark code in Databricks runs on a cluster. There are two types, and knowing when to use each is important for the exam.
+
+All-purpose clusters are created manually in the UI or via the API. They are persistent — they stay running until you terminate them. Their purpose is interactive development: running notebooks, exploring data, iterating on code. Because they sit idle between runs, they cost more over time.
+
+Job clusters are different. They are created automatically when a job starts and deleted automatically when the job ends. They are ephemeral and isolated — each job run gets a fresh cluster with a clean state. Because they only run during the job, they are far cheaper, especially when combined with spot instances. You cannot restart a job cluster — a new one is created for each run.
+
+The rule of thumb is straightforward. Develop on an all-purpose cluster. Run in production with job clusters.
+
+Cluster Configuration.
+
+When creating a cluster, you make several configuration decisions.
+
+The first is the Databricks Runtime version, or DBR. The runtime version determines which version of Spark, Python, and pre-installed libraries you get. Always pin to a specific version in production — avoid using "Latest" because it changes without warning.
+
+There are three runtime variants. Standard Databricks Runtime includes Spark, Delta Lake, Python, and Scala — use this for data engineering work. The ML runtime adds MLflow, TensorFlow, PyTorch, and scikit-learn on top of the standard runtime — use it for machine learning. The Photon runtime adds a native vectorized query engine written in C plus plus that dramatically accelerates SQL and BI workloads.
+
+Long-Term Support versions, marked with LTS, receive bug fixes and security patches for two years — these are the right choice for stable production clusters.
+
+The second configuration decision is node type. A cluster has one driver node and zero or more worker nodes. The driver coordinates the Spark application and runs the notebook's Python process. Workers execute Spark tasks in parallel.
+
+A Single Node cluster has only a driver with no workers. Spark still works, running locally. This is useful for small datasets, development, or tasks that don't parallelize — like single-threaded machine learning training on a GPU.
+
+The third decision is auto-scaling. With auto-scaling enabled, Databricks adds or removes worker nodes based on workload. You set a minimum and maximum number of workers, and the cluster adjusts dynamically. This works well for batch workloads with variable data volumes. It is less reliable for streaming jobs, where the continuous nature makes scaling decisions harder to predict.
+
+The fourth decision is auto-termination. All-purpose clusters should have auto-termination configured — typically thirty to sixty minutes of inactivity. Without it, an idle cluster keeps running and accumulating cost. Job clusters terminate automatically when the job ends, so auto-termination is not relevant for them.
+
+Cluster Access Modes.
+
+Access mode controls who can run code on the cluster and what isolation guarantees they have. This matters especially for Unity Catalog.
+
+Single User mode allows only one assigned user. It has full Unity Catalog support. Use it for production jobs and secure workloads.
+
+Shared mode allows multiple users, but each user's code runs in an isolated process. One user's crash or error does not affect others. It also has full Unity Catalog support. Use it for shared development clusters where you want to save cost by sharing compute.
+
+No Isolation Shared mode is legacy. Multiple users share the same process, with no isolation between them. It does not support Unity Catalog — it cannot enforce row-level or column-level security. Avoid it for new workloads.
+
+The key exam point here is this: Unity Catalog requires Single User or Shared access mode. If you see a question combining Unity Catalog with cluster configuration, No Isolation Shared is never the right answer.
+
+Job clusters always run in Single User mode, where the job's service principal is treated as the single user.
+
+Cluster Pools and Policies.
+
+Starting a fresh cluster takes three to five minutes because cloud virtual machines need to be provisioned and the Databricks runtime needs to install. Cluster pools solve this by keeping a set of virtual machines pre-warmed and idle, ready to be claimed by a cluster the moment it starts.
+
+You define a pool with a minimum number of idle instances and a maximum capacity. When a cluster attaches to the pool, it gets a pre-warmed machine almost instantly rather than waiting for provisioning. Multiple clusters can draw from the same pool.
+
+Pool machines are billed at the virtual machine rate while idle — no Databricks Unit charge — but you are paying for machines that may not be doing work. This is a cost versus speed tradeoff. Pools are most valuable for job clusters that run frequently, because avoiding the startup overhead repeatedly adds up.
+
+Cluster policies are a governance tool for administrators. They define JSON rules that restrict what users can configure when creating a cluster — for example, enforcing a maximum number of workers or requiring auto-termination. Policies prevent accidental cost overruns and enforce organisational standards.
+
+The dbutils Library.
+
+When a notebook is attached to a cluster, the dbutils object is pre-available alongside spark and the Spark Context. It is the Databricks utility library and has several namespaces.
+
+dbutils dot fs lets you interact with DBFS — list files, copy, move, or delete them. dbutils dot widgets lets you define parameters that can be passed into a notebook from a Job, making notebooks reusable and configurable. dbutils dot notebook dot exit lets a notebook return a value to a calling task, which is useful when one Job task invokes another notebook as a sub-task.
+
+dbutils is available in notebooks running on a cluster. It is not available in plain Python scripts running outside the Databricks environment.
+
+Summary.
+
+A workspace holds notebooks, repos, clusters, jobs, SQL warehouses, and Unity Catalog — all in one isolated environment.
+
+All-purpose clusters are persistent and used for interactive development. Job clusters are ephemeral, created per job run — use them in production to reduce cost.
+
+The Databricks Runtime version controls Spark, Python, and library versions. Pin to a specific LTS version for production. The ML runtime adds machine learning frameworks. The Photon runtime adds a vectorized engine for SQL-heavy workloads.
+
+Auto-scaling adjusts worker count to match load. Auto-termination stops idle all-purpose clusters automatically.
+
+Access mode determines user isolation and Unity Catalog support. Single User and Shared modes support Unity Catalog. No Isolation Shared does not.
+
+Cluster pools keep virtual machines pre-warmed to eliminate startup delays. Cluster policies let administrators enforce cost and configuration guardrails.
+
+In the next topic, we will look at Delta Lake on Databricks — the transaction log, schema enforcement, time travel, and Databricks-specific optimizations like OPTIMIZE and Z-ORDER.
