@@ -1,0 +1,45 @@
+{
+  "sections": [
+    {
+      "title": "Lakehouse Platform",
+      "notebooks": [
+        "01-lakehouse-architecture",
+        "02-workspace-clusters",
+        "03-delta-lake-on-databricks"
+      ]
+    },
+    {
+      "title": "ELT with Spark SQL & Python",
+      "notebooks": [
+        "04-querying-files-spark-sql",
+        "05-writing-to-delta-tables",
+        "06-cleaning-transforming-data",
+        "07-sql-udfs-higher-order-functions",
+        "08-python-udfs-control-flow"
+      ]
+    },
+    {
+      "title": "Incremental Data Processing",
+      "notebooks": [
+        "09-auto-loader",
+        "10-change-data-capture-merge",
+        "11-structured-streaming-databricks"
+      ]
+    },
+    {
+      "title": "Production Pipelines",
+      "notebooks": [
+        "12-delta-live-tables",
+        "13-dlt-expectations-data-quality",
+        "14-databricks-workflows-jobs"
+      ]
+    },
+    {
+      "title": "Data Governance",
+      "notebooks": [
+        "15-unity-catalog",
+        "16-data-objects-access-control"
+      ]
+    }
+  ]
+}
