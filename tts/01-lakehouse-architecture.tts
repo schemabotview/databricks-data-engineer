@@ -1,0 +1,65 @@
+The data lakehouse is the architectural pattern at the heart of the Databricks platform. It combines the low-cost, flexible storage of a data lake with the reliability and performance guarantees of a data warehouse — on a single system. Understanding why the lakehouse exists, and how it is structured, is the foundation of the Databricks Data Engineer Associate exam.
+
+The Evolution: Warehouse, Lake, Lakehouse.
+
+To understand the lakehouse, you need to understand what came before it, and why each approach fell short.
+
+Data warehouses have been around since the 1990s. They are excellent at structured, relational data and SQL analytics. But they come with hard limits. Storage is expensive and proprietary. You cannot store unstructured data like images or logs. Machine learning is an afterthought — you have to export data out to a separate platform. And because data lives in vendor-specific formats, moving it anywhere is painful.
+
+Data lakes arrived as a cheaper alternative. Store everything in raw files on object storage like S3 or Azure Data Lake Storage. Any format, any volume, low cost. Great for machine learning and data science. But the flexibility came at a price. There were no ACID transactions, so concurrent writes could corrupt data and failed jobs left partial results. There was no schema enforcement, so bad data landed silently and downstream queries returned wrong answers. SQL tools like Tableau would time out on raw files with no indexes or statistics. And without governance, lakes turned into what the industry called data swamps — full of stale, undocumented, untrusted data.
+
+The typical enterprise response was to run both: a warehouse for BI and a lake for ML, keeping two systems in sync. That created data duplication, complexity, and staleness.
+
+The lakehouse solves this by unifying them into one.
+
+Lakehouse Key Properties.
+
+A true lakehouse has six defining properties.
+
+First, ACID transactions. Concurrent readers and writers do not corrupt each other's data. A failed job does not leave partial results. Delta Lake implements this through a transaction log.
+
+Second, schema enforcement and evolution. Data written to a table must match its schema — bad records are rejected, not silently accepted. Schema can evolve by adding new columns without breaking existing queries.
+
+Third, BI and SQL support. Standard SQL tools can query lakehouse tables directly, with performance comparable to a warehouse, because lakehouse tables have statistics, indexing, and caching built in.
+
+Fourth, decoupled storage and compute. Data lives in open-format files on cheap cloud object storage. Compute clusters scale independently and can be shut down entirely without touching the data.
+
+Fifth, openness. Storage uses open formats — Delta Lake on top of Parquet. Other engines like Spark, Presto, and Trino can read the same data without going through a proprietary API.
+
+Sixth, end-to-end workloads. The same platform handles ingestion, ELT, SQL analytics, and machine learning model training. No data copying between systems.
+
+The Databricks Lakehouse Platform.
+
+Databricks is the commercial platform built around the lakehouse pattern. It layers several components on top of cloud object storage.
+
+At the bottom is the storage layer: Delta Lake. This adds ACID transactions, schema enforcement, time travel, and performance optimizations on top of Parquet files. We will cover Delta Lake in depth in a later notebook.
+
+Above that is the compute engine: Apache Spark. Databricks ships an optimized version called Databricks Runtime, or DBR, with additional performance improvements including Photon — a native vectorized query engine written in C plus plus that dramatically accelerates SQL workloads.
+
+On top of the runtime are four main surfaces. Databricks Notebooks — interactive, collaborative notebooks that support Python, Scala, SQL, and R, all in one notebook, with real-time co-authoring. Databricks SQL — a dedicated SQL warehouse for BI and ad-hoc queries, connecting to tools like Tableau, Power BI, and Looker via JDBC and ODBC. MLflow — open-source machine learning lifecycle management for tracking experiments, packaging models, and managing deployments. And Unity Catalog — the centralized governance layer that manages access control, data lineage, and auditing across all workspaces and all data assets.
+
+The Medallion Architecture.
+
+The standard data organisation pattern in a Databricks lakehouse is called the medallion architecture, also known as multi-hop architecture. It organises data into three layers of progressively cleaner, more refined data.
+
+The Bronze layer is raw ingestion — data exactly as it arrived from the source. JSON events from Kafka, CSV uploads, change data capture feeds. Nothing is cleaned or transformed. This layer is append-only — you never delete raw data, because it is your audit trail and recovery point.
+
+The Silver layer is cleaned and validated data, conformed to a schema. Duplicate records are removed. Types are cast correctly. Invalid rows are filtered out. Data from multiple sources may be joined here. The result is data that is trustworthy, even if not yet shaped for any specific use case.
+
+The Gold layer contains business-level aggregations ready for BI tools or machine learning models. Daily revenue by region, customer churn features, product performance metrics. This is what analysts and data scientists consume.
+
+Each layer is a set of Delta tables. Data hops from Bronze to Silver to Gold, getting refined at each step — hence multi-hop.
+
+Notice that this pattern gives you several important things. You always have the raw data to reprocess from. You have a clear separation between "what arrived" and "what we believe to be true." And your Gold layer is fast and trustworthy because the upstream cleaning is already done.
+
+Summary.
+
+A data lakehouse combines cheap object-store flexibility with warehouse-grade reliability — ACID transactions, schema enforcement, and good SQL performance on open-format data.
+
+The lakehouse emerged to fix the two-tier warehouse plus lake architecture that forced teams to duplicate and synchronize data across systems.
+
+The Databricks Lakehouse Platform layers Notebooks, Databricks SQL, MLflow, and Unity Catalog over Apache Spark, with Delta Lake as the transactional storage foundation.
+
+The medallion architecture — Bronze, Silver, Gold — is the standard pattern for organising data: raw ingestion, cleaned and conformed, aggregated for consumption. All three layers are Delta tables, so you get time travel, schema enforcement, and ACID guarantees at every hop.
+
+In the next topic, we will look at Databricks workspaces and clusters — how the platform is structured and how compute is configured for different workloads.
