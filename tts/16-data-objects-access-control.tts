@@ -1,0 +1,90 @@
+This final notebook ties together the full picture of data objects in Databricks — tables, views, functions, and volumes — and how access control works across them in a Unity Catalog environment.
+
+Managed versus External Tables from a Governance Perspective.
+
+The distinction between managed and external tables determines what happens to data when an object is dropped. This is one of the most commonly tested points in the exam.
+
+A managed table stores its data files inside the Unity Catalog managed storage path. Unity Catalog fully controls the data lifecycle. When you drop a managed table, the data files are deleted along with the metadata. When you drop a schema with the CASCADE option, all tables in it — and their data files — are deleted. The same applies when dropping a catalog with CASCADE.
+
+An external table stores its data files outside UC-managed storage, at a path under an External Location. Unity Catalog governs access to the data through GRANT and REVOKE, but it does not own the files. Dropping an external table removes only the table metadata from the metastore. The data files remain at the storage path. You can re-register the same path as a new table without losing any data.
+
+The summary rule is: managed means UC owns the data; external means UC governs access only. Dropping a managed table deletes the data. Dropping an external table does not.
+
+Views as an Access Control Mechanism.
+
+Views are securables. You can grant SELECT on a view to a user or group without granting SELECT on the underlying tables. The user can query the view and see exactly the columns and rows the view exposes, but they cannot query the underlying tables directly.
+
+The view owner must have SELECT on all underlying tables. If the owner loses that access, the view breaks for all consumers. To avoid tying ownership to a specific person, use a service principal as the view owner. Service principals do not leave organisations.
+
+Row Filters and Column Masks.
+
+Unity Catalog supports row filters and column masks as first-class table properties. These are newer and more powerful than the dynamic view pattern.
+
+A row filter is a SQL function that returns a boolean. You attach it to a table using ALTER TABLE SET ROW FILTER. Every query against the table automatically applies the filter. Users cannot bypass it even if they know the filter exists.
+
+A column mask is a SQL function that returns a value of the same type as the column. You attach it to a specific column using ALTER TABLE ALTER COLUMN SET MASK. Every query that selects that column receives the masked value.
+
+The key advantage over dynamic views is transparency. The table appears normal to consumers — they see the usual columns and write standard queries. The filtering and masking happen invisibly at the storage layer. Row filters and column masks apply regardless of how the table is accessed: directly, through a view, or from a Delta Live Tables pipeline.
+
+To remove a row filter, use ALTER TABLE DROP ROW FILTER. To remove a column mask, use ALTER TABLE ALTER COLUMN DROP MASK.
+
+User-Defined Functions as Securables.
+
+SQL user-defined functions registered in Unity Catalog are securables. You control access to them with the EXECUTE privilege. Grant EXECUTE to allow a principal to call the function. Revoke EXECUTE to prevent it. Use SHOW GRANTS ON FUNCTION to inspect who has access.
+
+Functions defined in Unity Catalog are persistent across sessions. Any user with EXECUTE privilege and USE SCHEMA on the containing schema can call the function. This is the recommended way to share reusable logic across teams.
+
+Python user-defined functions registered with spark.udf.register are session-scoped. They exist only in the current Spark session and are not Unity Catalog securables. To share Python functions across users, package them in a Python wheel and install it on the cluster, or wrap the logic inside a SQL function body.
+
+Volumes for File Access.
+
+Volumes are Unity Catalog objects that represent a cloud storage path. They enable governed file access without requiring users to have direct cloud credentials. You access volume paths using the slash Volumes slash catalog slash schema slash volume name prefix.
+
+A managed volume stores files inside UC-managed storage. Dropping a managed volume deletes the files. An external volume points to an External Location path. Dropping an external volume does not delete the files.
+
+The privileges for volumes are READ VOLUME to list and read files, and WRITE VOLUME to create and overwrite files.
+
+In Unity Catalog enabled workspaces, use the slash Volumes prefix for file access instead of the legacy dbfs slash path. The dbfs root mount is a legacy mechanism that is not compatible with Unity Catalog governance.
+
+Delta Sharing.
+
+Delta Sharing is an open protocol for sharing live Delta Lake data across organisations, clouds, and platforms without copying the data. Three objects are involved: a share, which is a named collection of tables you want to expose; a recipient, which is the external organisation or user receiving access; and a provider, which is the organisation that owns the data.
+
+The provider creates a share, adds tables to it, creates a recipient, and grants SELECT on the share to the recipient. The recipient receives a credential or activation link. In their own workspace, they create a provider object using that credential, discover the available shares, and create a catalog that maps to the share. From that point, they can query the shared tables as if they were local tables.
+
+The critical exam point is that Delta Sharing is read-only for the recipient. The data never leaves the provider's storage. The recipient queries it live through the Delta Sharing protocol. There is no data copy, no synchronisation job, and no S3 bucket transfer involved.
+
+Information Schema.
+
+Every Unity Catalog catalog has a built-in information underscore schema that lets you programmatically discover objects and grants. You query catalog.information underscore schema.tables to list tables, catalog.information underscore schema.columns to inspect columns, and catalog.information underscore schema.object underscore privileges to see who has what access.
+
+Information schema is catalog-scoped. You always prefix the catalog name. It is not the same as the system catalog tables, which are account-wide.
+
+Common Exam Scenarios.
+
+The minimum set of grants to allow a user to SELECT from a table is three: USE CATALOG on the catalog, USE SCHEMA on the schema, and SELECT on the table. If any of these three is missing, the query will fail with a permission denied error.
+
+To allow a team to create tables in a schema, they need USE CATALOG, USE SCHEMA, CREATE TABLE on the schema, and MODIFY on the schema to insert into the tables they create.
+
+To share data without exposing sensitive columns, either create a view that excludes those columns and grant SELECT on the view, or attach a column mask function to the sensitive column and grant SELECT on the table. Both approaches prevent the raw values from reaching unauthorised users.
+
+To audit who accessed a table, query system.access.audit and filter by the table name in request params and the date range of interest.
+
+To drop a schema and all its contents including data, use DROP SCHEMA with the CASCADE option. For managed tables this deletes the data files. For external tables in the schema, only the metadata is removed and the data files remain at their storage paths.
+
+Summary.
+
+Managed tables give Unity Catalog ownership of data — dropping them deletes the data. External tables give UC governance over access but not ownership — dropping them leaves the data intact.
+
+Views are securables that expose a safe subset of underlying table data. Row filters and column masks are the recommended pattern in Unity Catalog for transparent, policy-enforced access control — they attach to the table and apply regardless of how the table is accessed.
+
+SQL functions in Unity Catalog are persistent and securable via the EXECUTE privilege. Python UDFs registered with spark.udf.register are session-scoped and not UC-governed.
+
+Volumes provide governed file access at slash Volumes paths. Delta Sharing enables live, read-only cross-organisation data sharing without copying data.
+
+The information schema gives catalog-scoped programmatic discovery of objects and grants. The system.access.audit table gives account-wide access event history.
+
+The minimum grants to query a table are USE CATALOG, USE SCHEMA, and SELECT. Account-level groups must be used as UC principals — workspace-local groups are not supported.
+
+This completes the Databricks Data Engineer study notes. All five domains are covered across sixteen notebooks, from Lakehouse architecture and Delta Lake through incremental data processing, production pipelines with Delta Live Tables and Databricks Jobs, and Unity Catalog data governance.
+
