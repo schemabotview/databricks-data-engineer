@@ -1,0 +1,87 @@
+This notebook builds on the Structured Streaming foundations in the Apache Spark repo, which covers the unbounded table model, output modes, triggers, watermarking, stateful aggregations, foreachBatch basics, and stream-static joins. Here we focus on the Databricks-specific patterns: Delta as a streaming source, controlling where a stream starts, Change Data Feed as a streaming source, foreachBatch with MERGE, toTable, and query management.
+
+Delta as a Streaming Source.
+
+Any Delta table can be read as a stream. You use spark.readStream with format delta and load a path, or you use spark.readStream.table with a registered table name. Spark tracks which Delta table versions have been processed using the stream checkpoint, and delivers only rows from new commits on each micro-batch.
+
+This is a powerful pattern: any pipeline that writes to a Delta table — whether it is a batch job, another stream, Auto Loader, or a MERGE — automatically produces new data that downstream streaming consumers will pick up.
+
+The Delta streaming source delivers append-only data by default. It delivers new rows from INSERT and INSERT OVERWRITE operations. It does not deliver deletes or updates unless you enable Change Data Feed. Each micro-batch corresponds to one or more complete Delta versions, so reads are always consistent — you never get a partial write.
+
+If the source Delta table has updates or deletes, the stream will fail by default because those operations are incompatible with append output mode. You can work around this by setting the ignoreChanges option to true. This tells the stream to skip files that were rewritten by update or delete operations. The trade-off is that updated rows may be re-delivered — the stream re-reads the entire rewritten file, which includes unchanged rows alongside updated ones. Use ignoreChanges only when your downstream processing is idempotent. For reliable change delivery, use Change Data Feed.
+
+Starting Position.
+
+By default, a new Delta stream starts at the latest version of the table — it processes only future commits. This is the right default when you want to avoid reprocessing historical data.
+
+To replay historical data, you can control the starting position with two options.
+
+The startingVersion option takes an integer version number and starts the stream from that version. You can also set it to the string "earliest" to start from the very beginning of all recorded history.
+
+The startingTimestamp option takes a timestamp string and starts the stream from the first version committed at or after that time.
+
+An important exam point: both options only apply when the stream starts without an existing checkpoint. If a checkpoint already exists, the stream resumes from where it left off, and startingVersion and startingTimestamp are completely ignored.
+
+Change Data Feed as a Streaming Source.
+
+The standard Delta streaming source delivers only appended rows. Change Data Feed, or CDF, delivers every change — inserts, updates, and deletes — as individual records with an operation type.
+
+To use CDF as a streaming source, the source table must have CDF enabled. You set the delta.enableChangeDataFeed table property to true using ALTER TABLE SET TBLPROPERTIES.
+
+When reading the stream, you set the readChangeFeed option to true. You also typically set startingVersion to the version when CDF was enabled, to avoid trying to read change history that was not recorded.
+
+CDF adds three system columns to every record. The underscore change type column is a string with one of four values: insert, update_preimage, update_postimage, or delete. For an update, CDF emits two rows: one with update_preimage containing the old values, and one with update_postimage containing the new values. For inserts and deletes, CDF emits one row each. The underscore commit version column gives the Delta table version of the commit. The underscore commit timestamp column gives when the commit happened.
+
+A common CDF streaming pattern is to filter to insert and update_postimage records only, drop the system columns, and write to a Gold table. This propagates the latest state of each entity downstream without re-processing unchanged records.
+
+foreachBatch with MERGE — Streaming Upserts.
+
+This is the most exam-tested streaming pattern on Databricks.
+
+foreachBatch receives each micro-batch as a static DataFrame and lets you run arbitrary logic against it — including MERGE INTO. This is the standard approach when the stream contains updates and deletes rather than just appends, when you need to write to multiple targets, or when you need transformations that are not expressible directly in writeStream.
+
+The function you pass to foreachBatch takes two arguments: the batch DataFrame, which is a static DataFrame containing the rows for this micro-batch, and the batch ID, which is an incrementing integer.
+
+Inside the function, you first deduplicate the batch. A micro-batch may contain multiple changes for the same key, just like the CDC batch deduplication covered in the previous notebook. Use ROW_NUMBER with a window partitioned by the key and ordered by a sequence column descending, then filter to row number equals one.
+
+After deduplication, register the result as a temp view using createOrReplaceTempView. Then run the MERGE statement using batch_df.sparkSession.sql. It is important to use batch_df.sparkSession rather than the outer spark variable to ensure the SQL runs in the correct session context.
+
+Two exam points about foreachBatch. First, outputMode is ignored when using foreachBatch — the write logic inside your function controls what happens to the data. Second, foreachBatch combined with a checkpoint gives exactly-once upsert semantics: if the job fails and restarts, the batch ID is replayed, and your function should be idempotent with respect to the batch ID.
+
+toTable vs start.
+
+There are two ways to sink a stream to Delta. The start method takes a path and writes an unregistered Delta table to that location. You must explicitly set the format to delta. The toTable method takes a table name and writes to a registered Delta table in the metastore.
+
+In production, prefer toTable. It integrates with Unity Catalog, registers the table so it is immediately queryable by name, and is consistent with how batch writes work using saveAsTable or CREATE TABLE AS SELECT.
+
+Managing Active Streaming Queries.
+
+When a stream is started, it returns a streaming query object. You can list all active streams in the current session using spark.streams.active, which returns a list of streaming query objects.
+
+Each query object has a name, a unique ID, and an isActive flag. The lastProgress property returns a dictionary with metrics from the most recent micro-batch — including the number of input rows, the input rows per second, and state operator information for stateful queries. This is useful for monitoring throughput and detecting lag.
+
+You stop a specific stream by calling stop on the query object. You can stop all active streams by iterating over spark.streams.active and calling stop on each one.
+
+Trigger Modes Summary.
+
+The trigger mode controls how often the stream runs. No trigger at all is the continuous default — Spark runs micro-batches as fast as possible for minimum latency. processingTime with a duration runs a micro-batch on a fixed schedule. availableNow processes all pending data in one or more micro-batches and then stops — this is the right choice for scheduled Databricks Jobs. The once trigger is deprecated; use availableNow instead.
+
+For Delta streaming in production Databricks Jobs, availableNow with a job schedule is the standard pattern. It gives incremental, stateful processing with the cost profile of a batch job.
+
+Summary.
+
+Any Delta table is a valid streaming source — spark.readStream.table delivers only new rows from each new commit.
+
+By default, updates and deletes in the source cause stream failure. Use ignoreChanges to skip them with possible re-delivery, or use Change Data Feed for true change delivery.
+
+startingVersion and startingTimestamp control where a new stream begins. They are ignored if a checkpoint already exists.
+
+Change Data Feed delivers insert, update_preimage, update_postimage, and delete records with three system columns. Enable it with the delta.enableChangeDataFeed table property.
+
+foreachBatch plus MERGE is the exam-critical pattern for streaming upserts. Deduplicate the batch, register as a temp view, and run MERGE via batch_df.sparkSession.sql. outputMode is ignored with foreachBatch.
+
+toTable writes to a registered Delta table — preferred over start for production.
+
+Use availableNow trigger for scheduled Databricks Jobs. Manage queries with spark.streams.active, query.lastProgress, and query.stop.
+
+This completes Section 3 on incremental data processing. The next section covers production pipelines, starting with Delta Live Tables.
