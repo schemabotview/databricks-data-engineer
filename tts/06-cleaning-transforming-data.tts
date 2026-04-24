@@ -1,0 +1,93 @@
+The Silver layer is where raw, messy Bronze data becomes trustworthy. This notebook covers the core transformation toolkit: deduplication, null handling, safe type casting, string cleaning, date parsing, conditional logic, and the quarantine pattern for bad records.
+
+Deduplication.
+
+There are three approaches to deduplication in Spark SQL, each suited to a different situation.
+
+The first is DISTINCT. Adding DISTINCT to a SELECT statement removes rows where all column values are identical. This is the simplest approach but only works when duplicates are exact copies — every field must match.
+
+The second is dropDuplicates in PySpark. You can call it with no arguments to remove exact duplicates, or pass a list of column names to deduplicate by a subset of keys. When you use a subset, dropDuplicates keeps one arbitrary row per key — which specific row is kept is non-deterministic.
+
+The third approach, and the most precise, is window-based deduplication using the ROW_NUMBER function. You assign a row number to each row within a partition defined by the key columns, ordered by a tiebreaker column such as a timestamp or version number. Filtering where the row number equals one gives you exactly one row per key, deterministically. You choose which row by controlling the ORDER BY direction — descending order keeps the latest record.
+
+Null Handling.
+
+Null handling is a source of subtle bugs in data pipelines. The first thing to understand is that null and empty string are different values in Spark. Null means the value is absent — it is unknown. An empty string is a valid string that happens to have zero characters. A filter on IS NOT NULL will not catch empty strings.
+
+Use NULLIF to convert a specific value to null. Writing NULLIF of a column and an empty string returns null if the column is empty, and returns the column value otherwise. After this conversion, a simple IS NOT NULL filter catches both original nulls and what were previously empty strings.
+
+COALESCE takes multiple arguments and returns the first non-null value among them. This is useful for providing fallback values — for example, returning a backup email address if the primary one is null, or a literal default if both are null.
+
+In PySpark, fillna replaces nulls with a specified value. You can pass a single value that applies to all compatible columns, or a dictionary mapping column names to replacement values. dropna removes rows that contain nulls, with options to control whether any null or all nulls trigger the drop, and which columns to consider.
+
+Type Casting — TRY_CAST vs CAST.
+
+This is one of the most exam-tested topics in this section.
+
+CAST converts a value to a different type. If the value cannot be converted — for example, casting the string N slash A to a double — CAST throws a SparkException and the entire job fails.
+
+TRY_CAST does the same conversion but never throws. If the value cannot be converted, it returns null instead. For raw, unvalidated data coming from a Bronze table, TRY_CAST is almost always the right choice.
+
+The exam-tested pattern is: use TRY_CAST on the raw string column to get a typed column with nulls where conversion failed, then filter rows where the result is null into a quarantine table, and write the valid rows to Silver.
+
+A common mistake is using CAST in Silver layer transformations and having the pipeline crash when one unexpected value arrives weeks later. TRY_CAST plus a quarantine keeps the pipeline running while preserving evidence of the bad data.
+
+String Cleaning.
+
+Several functions handle the most common string issues in raw data.
+
+TRIM removes leading and trailing whitespace from a string. LTRIM removes only leading whitespace, RTRIM only trailing. Whitespace in string fields is extremely common with CSV uploads and manual data entry.
+
+LOWER and UPPER normalise case. Email addresses and codes that should be case-insensitive should be lowercased immediately in the Silver layer so that joins and aggregations work correctly.
+
+REGEXP_REPLACE replaces all substrings matching a regular expression pattern with a replacement string. REGEXP_EXTRACT extracts the first capturing group matching a pattern — useful for pulling out a domain from an email address or a country code from a phone number.
+
+SPLIT splits a string on a delimiter and returns an array. You access elements by index, starting at zero. CONCAT joins strings together. CONCAT_WS joins with a separator and automatically skips null values, which makes it safer than CONCAT for optional fields.
+
+Date and Timestamp Parsing.
+
+Date handling is a consistent source of problems in real pipelines. Raw data arrives in different formats depending on locale, system, and team convention.
+
+TO_DATE takes a string column and a format pattern and returns a DATE type. TO_TIMESTAMP does the same for timestamps. The format pattern uses Java date format conventions: lowercase y for year, uppercase M for month, lowercase d for day, uppercase H for 24-hour hour.
+
+When data arrives in multiple formats, use COALESCE with multiple TRY_TO_DATE calls. Try the first format, and if it returns null, try the second. The first one that succeeds provides the result.
+
+Once you have a properly typed date, use YEAR, MONTH, and DAY to extract components. DATEDIFF gives you the number of days between two dates. DATE_ADD and DATE_SUB shift a date forward or backward. DATE_TRUNC truncates to a time boundary — for example, truncating to month gives the first day of that month, which is useful for monthly aggregations.
+
+Conditional Logic.
+
+CASE WHEN is the most flexible conditional expression. You list conditions in order, and the result of the first matching branch is returned. An optional ELSE clause provides a default. CASE WHEN works in SQL and translates directly to the when and otherwise methods in PySpark.
+
+IF is a simpler two-branch alternative: IF of condition, true value, false value.
+
+NULLIF converts a specific value to null. Writing NULLIF of a column and zero, for example, returns null when the column is zero and the column value otherwise. This is useful for avoiding divide-by-zero errors: dividing by NULLIF of the denominator and zero returns null instead of throwing an error.
+
+IFNULL returns a default value when the column is null — it is equivalent to COALESCE with two arguments.
+
+The Quarantine Pattern.
+
+Silently dropping bad records is dangerous. You lose data, have no visibility into data quality trends, and have no way to reprocess records once the upstream issue is fixed.
+
+The quarantine pattern routes invalid records to a separate Delta table instead of discarding them. Every bad row lands in the quarantine table with a rejection reason column explaining why it was rejected. Valid rows go to the Silver table, clean and fully typed.
+
+The implementation has three steps. First, add a rejection reason column to the Bronze data using CASE WHEN. The column is null for valid rows and contains a description for invalid ones. Second, write rows where rejection reason is null to the Silver table, applying all type casts and cleaning transformations. Third, write rows where rejection reason is not null to the quarantine table, preserving the original raw values alongside the rejection reason and a timestamp.
+
+The quarantine table enables data quality monitoring over time, provides evidence for upstream teams to investigate issues, and lets you reprocess records once the source problem is corrected.
+
+Summary.
+
+Deduplication: DISTINCT removes exact duplicates. dropDuplicates with a subset deduplicates by key. ROW_NUMBER with a window gives deterministic dedup, keeping the latest or earliest record.
+
+Null handling: null and empty string are different — use NULLIF to normalise empty strings to null. COALESCE returns the first non-null. fillna and dropna handle nulls in PySpark.
+
+Type casting: use TRY_CAST on raw string data — it returns null on failure instead of throwing. Filter or quarantine the resulting nulls downstream.
+
+String cleaning: TRIM for whitespace, LOWER for case normalisation, REGEXP_REPLACE for patterns, CONCAT_WS for joining with a separator while skipping nulls.
+
+Dates: TO_DATE and TO_TIMESTAMP parse strings with a format pattern. Use COALESCE of multiple TRY_TO_DATE calls for mixed formats.
+
+Conditional logic: CASE WHEN for multi-branch logic, NULLIF to convert a specific value to null, COALESCE for fallback chains.
+
+Quarantine pattern: tag bad rows with a rejection reason, write valid rows to Silver, write invalid rows to a quarantine table — never silently discard data.
+
+In the next topic, we will look at SQL UDFs and higher-order functions — creating reusable functions in SQL and working with arrays and maps.
