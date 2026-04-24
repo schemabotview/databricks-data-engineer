@@ -1,0 +1,96 @@
+Unity Catalog is Databricks's unified governance layer for all data and ay-pee-eye assets. It provides a single metastore that spans multiple workspaces, centralises access control, and adds column-level lineage, audit logging, and data discovery on top of Delta Lake storage.
+
+The Three-Level Namespace.
+
+Unity Catalog organises all data assets in a three-level hierarchy. At the top is the metastore, which holds everything. Under the metastore are catalogs. Under each catalog are schemas, which are also called databases. Under each schema are the actual objects: tables, views, functions, and volumes.
+
+A fully qualified object name is written as catalog dot schema dot object name. For example, main dot bronze dot orders, or analytics dot gold dot customer underscore lifetime underscore value.
+
+You can set a default catalog and schema for the session so you do not need to type the full path on every query. You use the USE CATALOG and USE SCHEMA statements to do this.
+
+The three-level namespace is a Unity Catalog concept. The legacy Hive metastore uses a two-level namespace — schema dot table — with hive underscore metastore as an implicit catalog that is always present for backwards compatibility.
+
+Metastore, Catalog, and Schema.
+
+The metastore is the top-level metadata store. There is typically one metastore per Databricks account region. It stores table schemas, access policies, lineage graphs, and audit records. A single metastore can be attached to multiple workspaces, which is how cross-workspace data sharing works. Metastores are managed by account admins.
+
+A catalog is the top-level namespace container. Users with the CREATE CATALOG privilege can create new catalogs. Two special catalogs exist in every metastore: hive underscore metastore, which is the legacy metastore, always present for backwards compatibility; and system, which is a built-in catalog containing operational and audit tables.
+
+A schema groups tables, views, functions, and volumes within a catalog. Managed tables in a schema are stored under the schema's storage path.
+
+A volume is a Unity Catalog object that represents a cloud storage path. You access files in a volume using the path slash Volumes slash catalog slash schema slash volume name slash file path. Volumes are governed by Unity Catalog access control and replace direct cloud storage paths in UC-enabled workspaces.
+
+The Privilege Model.
+
+Every object in Unity Catalog is a securable — you can grant and revoke privileges on it. Privileges are inherited downward through the hierarchy. Granting USE CATALOG on a catalog does not automatically grant access to tables. You must also grant USE SCHEMA on the schema and a data privilege such as SELECT on the table itself.
+
+The minimum set of grants needed to allow a user to query a table is three: USE CATALOG on the catalog, USE SCHEMA on the schema, and SELECT on the table. This three-step requirement is a frequent exam question.
+
+Common privileges include: USE CATALOG and CREATE CATALOG at the metastore level; USE SCHEMA and CREATE SCHEMA at the catalog level; CREATE TABLE, SELECT, and MODIFY at the schema and table level; READ VOLUME and WRITE VOLUME at the volume level. MODIFY covers INSERT, UPDATE, DELETE, and MERGE.
+
+You grant privileges with the GRANT statement, remove them with REVOKE, and inspect current grants with SHOW GRANTS.
+
+Principals.
+
+You grant privileges to principals. A principal can be a user identified by their email address, a group identified by its name, or a service principal identified by its application id. Groups are the recommended target for grants. Adding a user to a group immediately gives them all the group's privileges. Removing them from the group revokes everything at once, without hunting through table-level grants.
+
+An important exam distinction: Unity Catalog only recognises account-level groups, not workspace-local groups. Workspace-local groups exist only within one workspace and cannot be used as Unity Catalog principals. If you try to grant a privilege to a workspace-local group, the grant will fail.
+
+Ownership.
+
+Every securable has an owner. The owner can grant and revoke privileges on the object, transfer ownership, and drop the object. Ownership is assigned to the creator at creation time. You can transfer ownership using ALTER TABLE, ALTER SCHEMA, or ALTER CATALOG with the OWNER TO clause. Only the current object owner or a metastore admin can transfer ownership.
+
+Data Lineage.
+
+Unity Catalog automatically captures column-level data lineage — which columns a given column derives from, and which downstream tables or views consume it. No configuration is needed beyond using Unity Catalog. Lineage is captured for SQL queries that create or populate tables, for DataFrame writes using saveAsTable or toTable, and for Delta Live Tables pipelines.
+
+You can explore lineage in the Catalog Explorer user interface. Navigate to a table, open the Lineage tab, and trace both upstream sources and downstream consumers without writing any queries. Lineage data is also accessible through the REST ay-pee-eye and system tables.
+
+Audit Logging.
+
+Unity Catalog logs every data access event — SELECT queries, INSERT and MERGE statements, GRANT and REVOKE operations, schema changes — to audit logs. The primary way to query this data is through the system.access.audit table in the system catalog. This table has columns for the event time, the user's email, the action name, and the request parameters including the table name.
+
+You can also configure Databricks to deliver audit logs to your own cloud storage bucket for long-term retention and integration with security information and event management systems.
+
+External Locations and Storage Credentials.
+
+A storage credential is a Unity Catalog object that wraps a cloud identity — an aws IAM role or an Azure managed identity — giving Databricks permission to access a cloud storage bucket. Storage credentials are created by account admins.
+
+An external location is a Unity Catalog object that maps a specific cloud storage path to a named, governable location using a storage credential. In a UC-enabled workspace, you cannot read or write a cloud storage path unless the path is under a registered external location or exposed as a volume. Direct cloud storage paths in notebook code are blocked by UC's access enforcement when the cluster uses single-user or shared access mode.
+
+External tables in Unity Catalog point to data at an external location. Dropping an external table does not delete the underlying files.
+
+Cluster Access Modes.
+
+Unity Catalog requires a compatible cluster access mode. Single-user mode assigns the cluster to one user and gives full UC feature support. Shared mode allows multiple users and enforces per-user access control through UC. No Isolation Shared mode does not support Unity Catalog at all — it is a legacy mode that should not be used in UC-enabled workspaces.
+
+Unity Catalog also requires Databricks Runtime 11.3 LTS or higher. Clusters on older runtimes cannot connect to UC-governed resources.
+
+Dynamic Views for Row and Column Security.
+
+Unity Catalog supports fine-grained data access through dynamic views. A dynamic view uses the current underscore user function or the is underscore account underscore group underscore member function to filter rows or mask columns based on the identity of the querying user.
+
+For column masking, the view returns the full value to members of an admin group and a redacted or partially masked value to all other users. For row-level security, the view filters rows so each user only sees the subset of data they are permitted to see.
+
+The key property of dynamic views is that the filter expressions are evaluated at query time using the querying user's identity, not the view creator's identity. This makes them the standard pattern for enforcing fine-grained access without duplicating tables.
+
+You grant SELECT on the view to the group that should have access. You do not grant SELECT on the underlying table. The view enforces the policy transparently.
+
+Unity Catalog versus Legacy Hive Metastore.
+
+The legacy Hive metastore is accessible in UC-enabled workspaces as the hive underscore metastore catalog. Objects in hive underscore metastore are not automatically governed by Unity Catalog. They do not have lineage, fine-grained access control, or column-level security. You must recreate them in a proper Unity Catalog catalog to bring them under UC governance.
+
+Unity Catalog adds the three-level namespace, account-wide scope across multiple workspaces, fine-grained SQL GRANT and REVOKE, column-level and row-level security via dynamic views, automatic data lineage, audit logging via system tables, native Delta Sharing support, and volumes for governed file access. The legacy Hive metastore offers none of these.
+
+Summary.
+
+Unity Catalog uses a three-level namespace: catalog dot schema dot object.
+
+To query a table, a principal needs three grants: USE CATALOG, USE SCHEMA, and SELECT. Grant privileges to account-level groups, not individual users, for scalable access management.
+
+hive underscore metastore is always present but is not UC-governed. No Isolation Shared access mode does not support UC.
+
+Lineage is automatic and visible in Catalog Explorer. Audit events are queryable through system.access.audit.
+
+In UC-enabled workspaces, cloud storage access requires external locations or volumes — direct cloud paths are blocked. Dynamic views enforce row and column security at query time using the querying user's identity.
+
