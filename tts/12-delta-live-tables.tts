@@ -1,0 +1,93 @@
+Delta Live Tables, or DLT, is Databricks's declarative pipeline framework. Instead of writing imperative Spark code with explicit orchestration, you declare what each table should contain and DLT figures out the execution order, handles retries, tracks data quality, and manages incremental processing automatically.
+
+Why DLT Exists.
+
+A traditional Spark pipeline is a collection of notebooks or scripts chained by a Databricks Job. You are responsible for writing each transformation, defining the execution order, handling retries, deciding what to recompute versus skip, and monitoring data quality. This operational overhead grows as the pipeline grows.
+
+DLT eliminates most of it. It infers execution order from the references between tables. It handles incremental processing automatically using its own state tracking. It retries failed tables. It tracks data quality constraints as metrics in a unified event log. You write transformation logic; DLT handles the rest.
+
+DLT Object Types.
+
+There are three types of objects you can declare in a DLT pipeline.
+
+A Live Table is a batch materialized view. On each pipeline run, DLT recomputes or incrementally refreshes it from a batch query. You declare it with the dlt.table decorator in Python or with CREATE OR REFRESH LIVE TABLE in SQL. Live Tables are stored in Delta and are queryable outside the pipeline. They are appropriate for aggregations, Gold layer tables, and any transformation that reads a complete snapshot of upstream data.
+
+A Streaming Table is backed by a streaming query. It processes new data incrementally, appending new records on each run without reprocessing what has already been handled. You declare it the same way as a Live Table in Python, but the function body uses spark.readStream. In SQL, you use CREATE OR REFRESH STREAMING TABLE. Streaming Tables are the right choice for Bronze ingestion via Auto Loader and for Silver transformations that incrementally process new Bronze records.
+
+A View is temporary. It is not materialised to Delta storage and is not queryable outside the pipeline. It is computed inline whenever another table references it. Use views for intermediate transformation steps that you do not want to persist as separate tables.
+
+The LIVE Prefix and Dependency Resolution.
+
+To read another table within the same DLT pipeline, you use the LIVE dot prefix in SQL or the dlt.read and dlt.read_stream functions in Python.
+
+In SQL, writing FROM LIVE dot table_name tells DLT that this table depends on that other table. For a streaming read, you write FROM STREAM of LIVE dot table_name. In Python, dlt.read reads a Live Table in batch mode, and dlt.read_stream reads a Streaming Table incrementally.
+
+DLT automatically builds a dependency graph from these references. If silver_orders reads from bronze_orders, DLT ensures bronze_orders is up to date before computing silver_orders. You never write explicit task dependencies.
+
+An exam point to remember: the LIVE prefix is only for tables within the same pipeline. To read a table from outside the pipeline — a lookup table in another schema, for example — you use the standard three-level name without LIVE.
+
+Expectations — Data Quality Rules.
+
+Expectations are inline data quality constraints that evaluate a boolean SQL expression on every row and take a configured action when the constraint fails.
+
+There are three failure modes. The first is expect, which is a warning. Rows that fail the constraint are still written to the table, and the violation is counted in the Event Log. Use this for soft constraints where the data is useful despite the issue.
+
+The second is expect_or_drop. Rows that fail the constraint are dropped from the output — they are not written to the table. The pipeline continues running. Use this when bad rows should be excluded but should not stop the pipeline.
+
+The third is expect_or_fail. If any row fails the constraint, the pipeline fails and stops. Use this for hard requirements — for example, when a missing primary key would corrupt downstream joins and there is no safe recovery.
+
+In Python, you apply expectations as decorators on the table function, stacked above the dlt.table decorator. In SQL, you define them as CONSTRAINT clauses inside the CREATE STREAMING TABLE or LIVE TABLE statement, with ON VIOLATION DROP ROW or ON VIOLATION FAIL UPDATE for the non-warn modes.
+
+Expectation metrics — how many rows passed, failed, or were dropped — are stored in the DLT Event Log for every pipeline run. This gives you a historical record of data quality without any custom logging code.
+
+APPLY CHANGES INTO — Automatic CDC.
+
+APPLY CHANGES INTO is the most powerful DLT feature for data engineers. It processes a CDC feed and maintains a Silver table as either SCD Type 1 or SCD Type 2, automatically, without writing MERGE logic.
+
+You first declare the target as a Streaming Table. Then you call APPLY CHANGES INTO with the target table name, the source streaming table, the key columns, and a sequence_by column that determines which record wins when multiple changes arrive for the same key. You can also specify which rows represent deletes using the apply_as_deletes option.
+
+For SCD Type 1, DLT applies changes as overwrites — each key always has one current row, and historical values are not kept. For SCD Type 2, DLT automatically adds three columns to the target: underscore START AT, which is when this version became active; underscore END AT, which is when this version was superseded, null for the current version; and underscore IS CURRENT, a boolean flag.
+
+Three exam points about APPLY CHANGES INTO. First, the source must be a Streaming Table — APPLY CHANGES INTO does not work with Live Tables or batch sources. Second, the target table must be declared as a Streaming Table before the APPLY CHANGES INTO statement. Third, APPLY CHANGES INTO handles out-of-order records and duplicates automatically using the sequence_by column — you do not need to pre-deduplicate the CDC feed.
+
+Pipeline Configuration.
+
+Pipelines have two runtime modes.
+
+Development mode keeps the cluster running between pipeline runs, which makes iteration faster because you avoid the cluster startup time. Retries are disabled so failures surface immediately. This is the right mode while building and testing.
+
+Production mode starts a fresh cluster for each run, applies automatic retries, and is optimised for cost and reliability. Use it for all scheduled production runs.
+
+Pipelines also have two execution modes.
+
+Triggered mode runs the pipeline on demand or on a schedule. The cluster starts, processes all available new data, and shuts down. This is lower cost and appropriate for most batch-style pipelines where near-real-time latency is not required.
+
+Continuous mode keeps the pipeline and cluster running indefinitely, processing new data as it arrives with second-level latency. This is appropriate for use cases where low latency is a hard requirement.
+
+When it comes to what gets recomputed, incremental refresh processes only new data since the last run — this is the default for Streaming Tables. A Full Refresh drops and recomputes all tables from scratch. Use a Full Refresh after fixing a bug in transformation logic, because records already processed will not be re-evaluated by an incremental refresh. A Selective Full Refresh rebuilds only a specific table and its downstream dependencies.
+
+The Event Log.
+
+DLT writes structured event records to a Delta table called the event log. You query it like any Delta table. Key event types include flow_progress, which records when a table started, ran, and completed along with data quality metrics; create_update, which records when a pipeline run was triggered; and dataset_definition, which records the schema of each declared table.
+
+Expectation violation counts appear in flow_progress events. You can query the event log to build data quality dashboards showing violation trends over time across all tables in the pipeline.
+
+Summary.
+
+DLT is a declarative pipeline framework. You declare tables; DLT infers execution order, manages incremental state, handles retries, and tracks data quality.
+
+Three object types: Live Tables for batch materialized views, Streaming Tables for incremental append processing, Views for temporary intermediate steps.
+
+Use LIVE dot prefix in SQL or dlt.read and dlt.read_stream in Python to reference pipeline tables. DLT builds the dependency graph automatically.
+
+Three expectation modes: expect warns, expect_or_drop removes failing rows, expect_or_fail stops the pipeline.
+
+APPLY CHANGES INTO processes CDC feeds for SCD Type 1 or Type 2 automatically. The target must be a Streaming Table declared before the statement.
+
+Development mode persists the cluster and disables retries for fast iteration. Production mode uses fresh clusters with retries for reliability.
+
+Triggered mode runs on demand or schedule at lower cost. Continuous mode runs indefinitely at lower latency.
+
+After fixing a bug, use Full Refresh to reprocess all data.
+
+In the next topic, we will go deeper into DLT expectations, multi-constraint patterns, and querying the Event Log for quality metrics.
