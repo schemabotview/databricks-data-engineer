@@ -1,0 +1,84 @@
+Databricks Jobs is the orchestration layer for running production workloads on a schedule or in response to events. A Job is a named, configurable unit that runs one or more tasks. Each task can be a notebook, a Python script, a Python wheel, a Jar, a Delta Live Tables pipeline, a Databricks SQL query, or a dbt project. Tasks in the same job form a directed acyclic graph — you specify which tasks each task depends on, and Databricks runs independent tasks in parallel while respecting the dependency order.
+
+Job Clusters versus All-Purpose Clusters.
+
+A job cluster is created at the start of a job run and terminated when the run finishes. It cannot be shared across jobs or interactive sessions. Because it has no idle time it is cheaper and fully reproducible — the same configuration is applied on every run. Job clusters are the right choice for production workloads.
+
+An all-purpose cluster is persistent and shared. Multiple users and notebooks can attach to it. It is faster to start because it is already running, but it accumulates cost during idle time and can carry state from one session into another, which creates subtle reproducibility problems in production. Use all-purpose clusters for interactive development, not for scheduled production jobs.
+
+Each task in a multi-task job can be assigned its own cluster. A compute-intensive aggregation task can use a compute-optimised instance type while a memory-heavy join task uses a memory-optimised instance type. You configure them independently.
+
+Triggers.
+
+A job can be triggered in three ways.
+
+The first is a schedule. Databricks uses Quartz cron syntax. You can configure a daily run, an hourly run, a weekly run on a specific day, or any cron expression you need. The UI provides a visual builder so you do not need to memorise cron syntax. You can also set the timezone for the schedule.
+
+The second is a file arrival trigger. Databricks monitors a cloud storage path and triggers the job when new files land. This gives you event-driven ingestion without polling on a fixed schedule.
+
+The third is manual. You click Run Now in the UI or call the run-now ay-pee-eye endpoint programmatically.
+
+An important exam point: for Structured Streaming tasks inside scheduled jobs, use the available-now trigger mode. The stream processes all pending data in one or more micro-batches and then stops, allowing the job cluster to terminate cleanly. This gives incremental stateful processing with the cost profile of a batch job.
+
+Task Parameters and Dynamic Values.
+
+Jobs accept key-value parameters at two levels. Job-level parameters are passed to all tasks. Task-level parameters are passed to a specific task and override job-level values for that task.
+
+In notebook tasks, you read parameters with dbutils.widgets.get. In Python script tasks, they arrive as command-line arguments.
+
+Databricks also injects runtime metadata you can reference inside parameter values. The run id, job id, job name, task name, and start time are available as template variables. You can use the run id to build unique output paths — for example writing results to a folder named after the run id makes each run's output isolated and traceable.
+
+Passing Values Between Tasks.
+
+dbutils.jobs.taskValues lets tasks share small values through the orchestrator without writing to a shared table. One task sets a value by key. A downstream task reads it by specifying the producing task's key and the value's key. If you run the notebook interactively rather than inside a job, you provide a debug value as a fallback so the read does not fail.
+
+Values must be serialisable as jay-son — strings, integers, floats, booleans, lists, and dictionaries are all valid. The maximum size is 48 kilobytes. A task can only read values set by tasks that it depends on, directly or transitively.
+
+A common pattern is for the ingestion task to count the rows it wrote to Bronze and pass that count downstream. The Silver task reads the count and skips processing if it is zero, saving compute on days with no new data.
+
+Retry Policies and Timeouts.
+
+Each task has its own retry policy. You set a maximum retry count and a minimum interval between retries. Retries handle transient infrastructure failures — cluster startup errors, network connectivity blips, short-lived out-of-memory conditions. They do not fix logic errors. A notebook that throws a Python exception will fail on every retry.
+
+You can set a timeout per task and a timeout for the entire job run. If a task exceeds its timeout, it is killed and marked as timed out. If the job run exceeds its timeout, the entire run is cancelled.
+
+You can also mark individual tasks as optional. An optional task that fails does not cause the job to fail. Downstream tasks that depend on the optional task are skipped. Downstream tasks that do not depend on it continue normally. Use optional tasks for non-critical steps like refreshing a dashboard or sending a notification where failure should not block the core pipeline.
+
+Repair Runs.
+
+When a multi-task job fails partway through, you can repair the run rather than starting from scratch. A repair run keeps the results of all tasks that already succeeded and re-runs only the failed task and its downstream dependents. The cluster config is the same; only the failed portion is re-executed.
+
+This is essential for long-running pipelines. Re-running ten tasks to fix one failed step wastes time and compute. Repair runs let you fix the root cause — whether a code bug, a transient error, or a missing upstream dependency — and resume from the point of failure.
+
+Repair runs are only available for multi-task jobs. Single-task jobs must be re-run in full.
+
+Notifications.
+
+You can configure email notifications at the job level or the task level for four events: when the run starts, when it succeeds, when it fails, and when it exceeds a duration threshold. Duration warnings are useful for service-level agreement monitoring — if a job normally finishes in thirty minutes but a run takes two hours, you want to know before downstream consumers notice.
+
+Webhook notifications send an HTTP POST to a configured URL on the same events. The payload is a jay-son object containing the job id, run id, job name, and event type. Use webhooks to integrate with alerting systems like PagerDuty or Slack.
+
+Monitoring.
+
+The Runs UI shows all active and completed runs for each job. For multi-task jobs it renders the task dag with per-task status in real time. Clicking a task node shows its cluster, logs, and error message if it failed.
+
+Unity Catalog exposes historical job run data in the system.lakeflow.job underscore runs table. You can query this table to compute average run durations, count failure rates, and build cost attribution reports. Querying system tables requires the USE privilege on the system catalog.
+
+The notebook exit function sets the result string for a notebook task. It does not stop the cluster. The result is readable through the Jobs ay-pee-eye runs get-output endpoint and by other notebooks that call dbutils.notebook.run. Use this to propagate status codes or counts across the orchestration boundary.
+
+Summary.
+
+A Databricks Job is a directed acyclic graph of tasks. Each task can be a notebook, Python script, DLT pipeline, SQL query, or other supported type. Tasks run in parallel where dependencies allow.
+
+Use job clusters for production — ephemeral, isolated, reproducible. Use all-purpose clusters only for interactive development.
+
+Triggers can be scheduled with cron, event-driven on file arrival, or manual. Use available-now trigger mode for streaming tasks in scheduled jobs.
+
+Pass parameters at job or task level. Use dbutils.jobs.taskValues to pass small values between tasks without writing to a shared table.
+
+Configure retries for transient failures, timeouts to cap run duration, and optional tasks for non-critical steps that should not block the pipeline.
+
+Repair runs re-execute only the failed task and its downstream dependents, preserving succeeded task results.
+
+Notifications on start, success, failure, and duration warning are available via email or webhook. Historical run data is available in the Unity Catalog system table system.lakeflow.job underscore runs.
+
