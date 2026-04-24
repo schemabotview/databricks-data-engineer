@@ -1,0 +1,79 @@
+In a lakehouse, raw data often lands on cloud storage before it is cleaned, modeled, or registered as a table. Spark SQL lets you query files directly — no table registration needed. This is the foundation of the Bronze layer: ingest first, register later.
+
+The Backtick Syntax.
+
+Spark SQL supports a special syntax for querying files directly. You write SELECT star FROM, then a format keyword, then a dot, then the file path wrapped in backticks. The format keyword tells Spark how to interpret the bytes — it can be delta, parquet, json, csv, text, or binaryFile. The path is the absolute location of a file or directory on cloud storage or DBFS.
+
+The backtick is not optional and cannot be replaced with single quotes. Without it, Spark interprets the path as a table name and throws an error. This is a common exam distractor.
+
+For example, to read all JSON files in a directory you would write: SELECT star FROM json, then in backticks the path to the directory. To read a specific Parquet file you write: SELECT star FROM parquet, then in backticks the path to that file.
+
+Format Behaviour.
+
+Different formats behave very differently when queried directly. This matters for reliability in production pipelines.
+
+Delta is the most reliable choice. It is self-describing — the schema is stored in the transaction log and is always correct, regardless of how many files are in the directory. Delta also provides ACID guarantees, so concurrent reads and writes are safe.
+
+Parquet is also self-describing — the schema is embedded in the file's footer. It is reliable for reads, but there are no ACID guarantees, so concurrent writes can produce inconsistent reads.
+
+JSON requires Spark to infer the schema by sampling a subset of records. This is unreliable at scale. The sample may not represent all fields. Types may be inferred incorrectly. For production pipelines, always define an explicit schema when reading JSON.
+
+CSV has no embedded schema at all. Every field is read as a string by default. If the file has a header row, those become the column names, but types are still all strings unless you provide an explicit schema or enable schema inference. Schema inference on CSV is slow and error-prone — never use it in production.
+
+The text format reads each line as a single string in a column called value. This is useful for log files and unstructured data. The binaryFile format reads each file as a row with columns for path, modification time, length, and the raw bytes as binary content — used for images, audio, or other non-text files.
+
+The key distinction to remember is: self-describing formats like Delta and Parquet embed the schema in the file, so Spark reads it directly. Schema-on-read formats like JSON and CSV require Spark to guess or be told the schema.
+
+Reading Directories and Glob Patterns.
+
+When you point a path at a directory, Spark reads all files in that directory that match the format. It does not recurse into subdirectories by default — only the immediate contents of the directory are read.
+
+Glob patterns let you match a specific subset of files. A star wildcard matches any sequence of characters in a file name. You can use curly braces to match one of several values — for example, matching January, February, and March in a single pattern. Double stars match files at any depth.
+
+When reading a directory with multiple files, Spark makes a hidden column called underscore metadata available. You can select it to see which file each row came from, including the file name, path, and modification time. This is useful for auditing and for building incremental pipelines that track which source files have been processed.
+
+Creating Views Over Files.
+
+The backtick syntax is useful for one-off exploration, but for repeated use you should create a view. A view gives the file query a name that behaves like a table without moving or copying any data. Every time you query the view, Spark re-executes the underlying file read.
+
+A temporary view exists only for the current SparkSession. It is dropped automatically when the session ends. Create one with CREATE OR REPLACE TEMP VIEW followed by a name and AS followed by the file query.
+
+A global temporary view is shared across all sessions within the same Spark application. Access it through the global underscore temp schema using global temp dot view name.
+
+A persistent view is registered in the metastore and survives session restarts. It is visible to all users with access to the schema. Create it with CREATE OR REPLACE VIEW followed by a qualified name in the schema, then the AS clause with the file query.
+
+The key difference between a view and a table is that a view stores no data. Every query re-reads the source files. A table physically stores data in Delta format, so it is faster to query and supports OPTIMIZE and other data management features. Views always reflect the current state of the files. Tables need an explicit refresh or overwrite to pick up new data.
+
+A useful exam detail: DESCRIBE EXTENDED on a view shows Type: VIEW and the underlying query text. DESCRIBE EXTENDED on a managed table shows Type: MANAGED. DESCRIBE EXTENDED on an external table shows Type: EXTERNAL.
+
+Reading with Explicit Options.
+
+The backtick SQL syntax uses default reader options. For CSV and JSON, you almost always need to override them using the PySpark DataFrameReader.
+
+For CSV, the most important options are: header set to true to use the first row as column names, sep to specify the field delimiter if it is not a comma, nullValue to specify which string should be treated as null, and mode to control how malformed records are handled. The mode option can be PERMISSIVE, which stores malformed rows with null values, DROPMALFORMED, which silently discards them, or FAILFAST, which throws an error on the first bad record.
+
+Always provide an explicit schema when reading CSV or JSON in production. Use the StructType and StructField classes to define column names and types precisely. Never rely on inferSchema in a production job — it is slow, samples only a fraction of the data, and can produce wrong type inferences.
+
+For JSON files where a single document spans multiple lines, set the multiline option to true. Without it, Spark assumes each line is a complete JSON object.
+
+When to Use Each Approach.
+
+For one-off exploration of raw files, use the direct backtick query. For a reusable alias within a session, create a temp view. For a shared alias across users and sessions, create a persistent view in the metastore. For repeated production reads that need good performance, register the data as a Delta table and run OPTIMIZE.
+
+In a medallion pipeline: Bronze often starts as direct file reads or Auto Loader streams. Silver and Gold are always registered Delta tables.
+
+Summary.
+
+The backtick syntax SELECT star FROM format backtick path backtick lets you query files directly without registering a table. The backtick is mandatory — not single quotes.
+
+Self-describing formats like Delta and Parquet give reliable schemas. Schema-on-read formats like JSON and CSV require explicit schemas in production.
+
+Pointing a path at a directory reads all files in it. Glob patterns filter which files to include. The underscore metadata column reveals the source file path and modification time per row.
+
+Temp views alias a file query for the current session. Persistent views register in the metastore for all users. Neither moves data.
+
+DESCRIBE EXTENDED on a view shows Type: VIEW and the underlying query — a quick way to distinguish views from tables on the exam.
+
+Always define an explicit schema when reading CSV or JSON. Never rely on inferSchema.
+
+In the next topic, we will look at writing to Delta tables — INSERT statements, COPY INTO, and overwrite strategies for loading data into the Silver layer.
