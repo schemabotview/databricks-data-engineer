@@ -1,0 +1,75 @@
+Change Data Capture, or CDC, is the pattern of tracking row-level changes in a source system — inserts, updates, and deletes — and propagating those changes to a downstream table. MERGE INTO is the SQL statement that applies those changes atomically. Together they are the foundation of incremental Silver layer processing: instead of rewriting the entire Silver table from Bronze on every run, you apply only what changed.
+
+What is CDC?
+
+Source databases like Postgres, MySQL, and Oracle record every change to a transaction log. CDC tools such as Debezium, AWS DMS, and Fivetran read that log and emit each change as a structured record. Each record carries three pieces of information: the operation type, which is I for insert, U for update, or D for delete; the after-image, which is the row's new values after the change; and a sequence number or timestamp that establishes ordering within the feed.
+
+These records land in a Bronze table, typically via Auto Loader or from a Kafka topic. The Silver layer applies them using MERGE INTO to keep the Silver table in sync with the current state of the source.
+
+MERGE INTO Syntax.
+
+The MERGE statement has four parts: a target table with an alias, a source table or subquery with an alias, an ON clause defining the join key, and one or more WHEN clauses.
+
+The WHEN MATCHED clause fires when the key exists in both the target and the source. You can specify UPDATE SET to update columns, or DELETE to remove the row. Multiple WHEN MATCHED clauses are allowed and are evaluated in order — the first one whose condition matches wins.
+
+The WHEN NOT MATCHED clause, also written as WHEN NOT MATCHED BY TARGET, fires when the key exists in the source but not in the target. The only allowed action is INSERT.
+
+The WHEN NOT MATCHED BY SOURCE clause is a Delta Lake extension. It fires when the key exists in the target but not in the source. You can DELETE or UPDATE these rows. This clause is essential for full snapshot synchronization.
+
+A critical exam point: the order of WHEN MATCHED clauses matters. When applying CDC with both deletes and updates, always put the DELETE condition before the UPDATE condition. If you put UPDATE first, rows with a delete operation type will match the UPDATE clause and be updated instead of deleted.
+
+The entire MERGE operation is atomic. All inserts, updates, and deletes from the statement either commit together or none of them do.
+
+Deduplicating CDC Before MERGE.
+
+A CDC batch may contain multiple changes for the same key within a single batch window. For example, a customer record might be updated twice and then deleted within the same five-minute interval. If you MERGE all three records without deduplication, the result depends on processing order, which is non-deterministic in a distributed system.
+
+The correct approach is to deduplicate the CDC batch to the latest operation per key before passing it to MERGE. Use ROW_NUMBER with a window function partitioned by the key and ordered by the sequence number descending. Filter to row number equals one. This gives you exactly one record per key — the most recent change.
+
+This deduplication step is not optional. Skipping it with a multi-change batch will produce incorrect results and can leave the Silver table in an inconsistent state.
+
+WHEN NOT MATCHED BY SOURCE.
+
+Standard MERGE handles changes that appear explicitly in the CDC feed. But some source systems send periodic full snapshots rather than individual change events. A snapshot represents the complete current state of the source table. Rows absent from the new snapshot should be removed from the target.
+
+The WHEN NOT MATCHED BY SOURCE clause handles this. When you include it in a MERGE, rows in the target that have no corresponding row in the source are caught by this clause and can be deleted or updated.
+
+Combined with WHEN NOT MATCHED BY TARGET for inserts and WHEN MATCHED for updates, a single MERGE statement can fully synchronize a target table with a source snapshot — bringing in new rows, updating changed rows, and removing rows that no longer exist in the source.
+
+SCD Type 1 and Type 2.
+
+Slowly Changing Dimensions describe how to handle historical changes in dimension tables.
+
+SCD Type 1 is the simplest: overwrite. When a row changes, you update the existing row and discard the old values. No history is kept. This is appropriate for corrections, typos, and attributes where the historical value is meaningless. The implementation is a straightforward MERGE with an UPDATE SET clause.
+
+SCD Type 2 preserves full history. Every time a row changes, you close the current version by setting its valid_to date and is_current flag to false, and insert a new row representing the new version with is_current set to true. The result is multiple rows per entity, one per version over time. This is appropriate for attributes where history matters — a customer's tier level over time, an employee's department history, a product's price history.
+
+SCD Type 2 MERGE is more complex than Type 1 because you need to both update the existing row and insert a new one in a single statement. In practice, Delta Live Tables provides an APPLY CHANGES INTO statement that implements SCD Type 2 automatically with a declarative syntax — this is covered in the Delta Live Tables notebook.
+
+MERGE Performance.
+
+MERGE can be slow on large tables without optimization. Three practices make a significant difference.
+
+First, always filter the source to the current batch. Never MERGE the entire CDC history — pass only the records from the current processing window to the MERGE statement.
+
+Second, Z-ORDER or liquid cluster the target table on the join key. Delta's data skipping works by reading file-level statistics. When the join key is clustered, Delta can skip files that don't contain any of the keys being merged, dramatically reducing the data scanned.
+
+Third, enable deletion vectors on the target table. With deletion vectors enabled, the UPDATE and DELETE parts of a MERGE write small sidecar files instead of rewriting full Parquet files. This makes the write side of MERGE much faster, especially for high-cardinality tables with many small changes.
+
+Summary.
+
+CDC captures row-level changes from source systems. Each change record carries an operation type, the new row values, and a sequence number for ordering.
+
+MERGE INTO applies CDC changes atomically. The WHEN MATCHED clause handles rows in both target and source — use it for updates and deletes. The WHEN NOT MATCHED clause handles new rows — use it for inserts. WHEN NOT MATCHED BY SOURCE handles rows in the target absent from the source — Delta-specific, used for snapshot synchronization.
+
+Multiple WHEN MATCHED clauses are evaluated in order. Put DELETE before UPDATE.
+
+Always deduplicate the CDC batch to the latest operation per key using ROW_NUMBER before running MERGE.
+
+WHEN NOT MATCHED BY SOURCE enables full snapshot synchronization — remove target rows absent from the source snapshot in a single MERGE.
+
+SCD Type 1 overwrites — no history. SCD Type 2 keeps full history by closing old versions and inserting new ones. Use Delta Live Tables APPLY CHANGES INTO for automatic SCD Type 2.
+
+For MERGE performance: filter source to current batch, cluster on the join key, and enable deletion vectors.
+
+In the next topic, we will look at Structured Streaming on Databricks — stateful aggregations, watermarks, and streaming joins in the context of Delta Lake targets.
