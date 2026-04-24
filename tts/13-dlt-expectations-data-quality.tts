@@ -1,0 +1,80 @@
+This notebook goes deeper into Delta Live Tables expectations, covering how to stack multiple constraints, write complex SQL conditions, implement the DLT quarantine pattern, and query the Event Log to measure data quality trends over time.
+
+Multi-Expectation Stacking.
+
+You can apply more than one expectation to a single DLT table. In Python, you stack decorators — each expect, expect_or_drop, or expect_or_fail call sits on its own line above the dlt.table decorator. DLT evaluates every constraint independently. A row that fails one expectation is not automatically excluded from the others. If you use expect on all constraints, every failing row is written but each violation is counted and logged separately. If you mix modes — say, expect_or_drop for one constraint and expect for another — a row is dropped if it fails the drop constraint regardless of whether it passes the warn constraint.
+
+In SQL, you list multiple CONSTRAINT clauses inside the CREATE statement. The same independence rule applies.
+
+The practical implication is that expectation names must be unique within a table. DLT uses the name as the key when storing violation counts in the Event Log, so duplicate names would merge two different counts into one entry and make your quality metrics unreadable.
+
+Complex SQL Conditions in Expectations.
+
+Each expectation takes a SQL boolean expression. This expression can be as simple or as complex as you need.
+
+For pattern matching, you can use RLIKE with a regular expression. For example, checking that an email column matches a standard email pattern, or that a phone number contains only digits.
+
+For set membership, you use IN with a list of valid values. This is common for status columns — confirming that an order status is one of a known set of valid states.
+
+For range checks, you use BETWEEN. This is natural for numeric bounds or date windows.
+
+For multi-column conditions, you combine expressions with AND or OR. For example, requiring that if a delivery date is present then a ship date must also be present — expressed as a conditional with IS NULL or IS NOT NULL checks.
+
+For null-safe comparisons, remember that standard equality with null returns null, not true or false. To test whether a nullable column matches a value, combine IS NULL and IS NOT NULL checks explicitly, or use the null-safe equality operator in Spark SQL.
+
+The Event Log and Data Quality Metrics.
+
+DLT writes a structured event record to the Event Log for every pipeline run. The Event Log is a Delta table you can query directly. Its location depends on the pipeline's storage configuration. In Unity Catalog pipelines, it is accessible as a table in the pipeline's target schema. In older hive-based pipelines, you query it by path using spark.read.table or by constructing the path from the pipeline storage location.
+
+The key columns in the Event Log are id, which is a unique event identifier; timestamp, when the event was recorded; event_type, a string discriminating what kind of record this is; origin, a struct containing pipeline underscore id, cluster underscore id, and flow underscore name; level, which is INFO, WARN, or ERROR; and details, a JSON string containing event-specific payload.
+
+The event types you need to know are flow underscore progress, which records each table's execution status and contains the data quality metrics; create underscore update, which records each pipeline run trigger; and dataset underscore definition, which records the declared schema of each table.
+
+Expectation metrics live inside flow underscore progress events. The details column for these events contains a nested JSON structure. The data quality block inside that JSON has an expectations array, where each element has a name matching your constraint name, a passed underscore rows count, and a failed underscore rows count.
+
+To extract this data in a query, you first filter the Event Log to rows where event underscore type equals flow underscore progress. Then you use FROM underscore JSON to parse the details column into a struct, navigate to the expectations array, and use EXPLODE to expand it into individual rows. Once expanded, you can group by pipeline run, flow name, or constraint name and aggregate passed and failed counts.
+
+This gives you a historical quality dashboard without any custom logging code — every expectation violation is automatically captured on every run.
+
+The DLT Quarantine Pattern.
+
+A common production pattern is to separate valid records from invalid ones rather than dropping bad records entirely. Dropping records means that if you later fix the upstream issue, you cannot easily recover what was discarded.
+
+The quarantine pattern uses a two-step approach.
+
+In the first step, you declare a Silver table with an expect expectation, not expect_or_drop. This means all records — both valid and invalid — are written to Silver. You include the boolean result of your validation as a column named something like is underscore quarantined, computed as NOT of your validation condition.
+
+In the second step, you declare two downstream tables. The valid Silver table filters to rows where is underscore quarantined is false. The quarantine table filters to rows where is underscore quarantined is true, keeping only the fields needed for investigation.
+
+The advantage is that the quarantine table is a live record of all bad data that arrived. Downstream Gold tables read from the valid Silver table and never see bad records. When the root cause is fixed, the quarantine table drains naturally as new records arrive clean.
+
+Failure Mode Decision Guide.
+
+Use expect when a constraint violation is informational. The data is still useful and downstream consumers can tolerate or handle the anomaly themselves. Examples are optional enrichment fields or soft business rules.
+
+Use expect underscore or underscore drop when bad rows are useless downstream but should not stop the pipeline. The pipeline continues producing output from valid rows. Examples are records with null primary keys or malformed dates that cannot be parsed.
+
+Use expect underscore or underscore fail when a constraint violation would corrupt downstream state. If even one bad row gets through, it would break joins, produce incorrect aggregations, or violate referential integrity. In this case stopping the pipeline is the safer outcome. Examples are missing foreign keys or sequence gaps in ordered event streams.
+
+The quarantine pattern is an alternative to expect underscore or underscore drop when you want a recovery path. Instead of discarding bad rows, you isolate them.
+
+Expectation Naming Conventions.
+
+Use descriptive, underscore-separated names that encode what is being checked and on which column. Good names read like natural language: not underscore null underscore order underscore id, valid underscore status underscore code, positive underscore quantity. Avoid generic names like rule one or check two — they make the Event Log uninterpretable when you have dozens of constraints across many tables.
+
+Because DLT uses constraint names as metric keys in the Event Log, changing a constraint name across pipeline runs breaks continuity in your quality trend queries. Treat constraint names as stable identifiers once a pipeline is in production.
+
+Summary.
+
+Stack multiple expectations as decorators in Python or as multiple CONSTRAINT clauses in SQL. Each constraint is evaluated independently. Names must be unique within a table.
+
+Complex SQL conditions — RLIKE, IN, BETWEEN, multi-column AND and OR, null checks — are all valid inside expectation expressions.
+
+The Event Log stores flow underscore progress events containing an expectations array with passed and failed row counts per constraint. Query it by filtering event type and expanding the JSON array with EXPLODE.
+
+The quarantine pattern uses expect on a staging table to capture all records including bad ones, adds an is underscore quarantined flag, then separates valid and invalid rows in downstream tables. This preserves bad records for investigation rather than discarding them.
+
+Choose expect for informational violations, expect underscore or underscore drop to exclude bad rows without stopping the pipeline, expect underscore or underscore fail when bad rows would corrupt downstream state, and the quarantine pattern when you need a recovery path.
+
+Use stable, descriptive names for constraints to maintain consistent Event Log metrics across pipeline runs.
+
