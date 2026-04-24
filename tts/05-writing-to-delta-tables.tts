@@ -1,0 +1,91 @@
+Reading data is only half the story. The ELT pattern means you are constantly writing — appending new records, overwriting stale data, loading files from landing zones, and evolving schemas as upstream systems change. Understanding the different write patterns and their trade-offs is essential for the Databricks Data Engineer Associate exam.
+
+INSERT INTO — Append Rows.
+
+INSERT INTO appends rows to an existing Delta table. You can insert literal values or the results of a SELECT query. The incoming schema must match the table schema — extra columns or incompatible types cause an error.
+
+The important thing to remember about INSERT INTO is that it is always an append. It never removes existing rows. If you run the same INSERT INTO twice with the same source data, you will get duplicate records. INSERT INTO is appropriate when you know the incoming data is new and you simply want to add it to the table.
+
+INSERT OVERWRITE — Replace All Data.
+
+INSERT OVERWRITE replaces the entire contents of a table with the result of the query. After the operation, only the new rows remain. The table's schema is preserved — INSERT OVERWRITE cannot change column definitions. This makes it different from the DataFrame overwrite mode with schema replacement, which we will cover shortly.
+
+Despite replacing the data, INSERT OVERWRITE does not destroy history. Delta records the operation in the transaction log, and previous versions remain accessible through time travel.
+
+INSERT OVERWRITE is appropriate for Gold layer aggregations that are fully recomputed on each pipeline run — for example, a daily revenue summary that is recalculated from the full Silver table every morning.
+
+Dynamic Partition Overwrite and REPLACE WHERE.
+
+When you run INSERT OVERWRITE on a partitioned table, the default behaviour replaces all partitions — even partitions that have no rows in the incoming data. This is often not what you want. If you are refreshing UK data, you do not want to wipe out the US and German partitions.
+
+Dynamic partition overwrite changes this. Only the partitions that appear in the incoming data are replaced. All other partitions are left untouched. You enable it by setting the partitionOverwriteMode option to dynamic on the write, or by setting the session configuration spark dot sql dot sources dot partitionOverwriteMode to dynamic.
+
+The cleaner Delta-native approach is REPLACE WHERE. You write INSERT INTO table REPLACE WHERE followed by a predicate, then the new data. Delta atomically replaces all rows matching the predicate with the incoming rows. It is explicit, does not require session configuration, and works whether or not the table is partitioned.
+
+COPY INTO — Idempotent File Ingestion.
+
+COPY INTO is a SQL command designed specifically for loading files from cloud storage into a Delta table. Its defining property is idempotency: it tracks which files have already been loaded in the Delta transaction log, and skips them on subsequent runs. New files that arrive in the source path are loaded on the next run.
+
+The syntax is: COPY INTO table name, FROM the cloud storage path, FILEFORMAT equals the format name, optionally FORMAT OPTIONS for reader options like header and separator, and COPY OPTIONS for Delta-level options like mergeSchema.
+
+You can also embed a SELECT statement inside the FROM clause to transform data inline before it lands in the table. This lets you cast types, rename columns, or filter rows as part of the load.
+
+Because COPY INTO is idempotent, it is safe to schedule as a recurring job without deduplication logic. If the job runs twice, the second run simply does nothing — no duplicates are created.
+
+COPY INTO works well for batch micro-ingestion scenarios with thousands of files. For very high volumes with millions of files arriving continuously, Auto Loader, covered in notebook 9, is the better choice. Auto Loader uses cloud file notification services to track new files at scale, whereas COPY INTO lists the directory on each run.
+
+DataFrame Write Modes.
+
+When writing with the PySpark DataFrame API, the mode method controls what happens if the target already contains data.
+
+Append mode adds rows to the existing table without removing anything. It is the DataFrame equivalent of INSERT INTO.
+
+Overwrite mode replaces all data. For Delta tables, the transaction log preserves the history, so previous versions remain accessible via time travel even after an overwrite.
+
+Ignore mode does nothing if the target already exists. It is a silent no-op — useful when you want to write data only if the table does not yet exist.
+
+Error mode, which is the default, throws an exception if the target already exists. This protects against accidental overwrites.
+
+To replace the schema as well as the data, use overwrite mode combined with the overwriteSchema option set to true. Without this option, an overwrite preserves the existing column definitions — the incoming DataFrame must match the schema.
+
+Schema Enforcement on Write.
+
+Delta's schema enforcement rejects writes that do not conform to the table schema. This is a protective feature — it prevents bad data from corrupting tables that downstream consumers depend on.
+
+Extra columns in the incoming DataFrame cause an AnalysisException. The write is rejected entirely.
+
+Incompatible types cause the same error. For example, writing a string value into a column defined as a double will be rejected.
+
+What Delta does allow is safe type widening. Writing an integer into a long column is fine because a long can always hold an integer value. The reverse — writing a double into an integer column — is rejected because data would be lost.
+
+Missing columns are handled gracefully. If the incoming DataFrame is missing columns that exist in the table schema, those columns are written as null for all new rows.
+
+Schema Evolution on Write.
+
+When your source data gains new columns over time, fighting schema enforcement every time is impractical. Schema evolution provides a controlled way to widen the table schema as new columns arrive.
+
+The mergeSchema option, set to true on the write, merges the incoming DataFrame's schema with the existing table schema. New columns in the incoming data are added to the table. Existing columns are unchanged. Rows written before the new column existed will have null in that column. This is the safe, non-destructive path for schema evolution and is appropriate for production pipelines.
+
+You can also enable mergeSchema for the entire session by setting the Spark configuration spark dot databricks dot delta dot schema dot autoMerge dot enabled to true.
+
+The overwriteSchema option, combined with overwrite mode, replaces the schema entirely. Old columns that are not present in the incoming DataFrame are dropped from the table definition, and all data is replaced. This is destructive and should be used carefully.
+
+The key distinction: mergeSchema only adds columns and preserves data. overwriteSchema replaces both schema and data.
+
+Summary.
+
+INSERT INTO appends rows. Running it twice on the same source data creates duplicates. Use MERGE INTO for upserts.
+
+INSERT OVERWRITE replaces all rows but cannot change the table schema. Previous versions remain accessible via time travel.
+
+INSERT INTO with REPLACE WHERE atomically replaces rows matching a predicate — the preferred approach over dynamic partition overwrite.
+
+COPY INTO loads files from cloud storage idempotently. It tracks loaded files in the Delta log and skips them on re-runs. Safe to schedule as a recurring job.
+
+DataFrame write modes are: append, overwrite, ignore, and error (the default).
+
+Schema enforcement rejects extra columns and type mismatches. Missing columns become null.
+
+mergeSchema adds new columns without removing existing ones. overwriteSchema replaces the entire schema and data — use with care.
+
+In the next topic, we will look at cleaning and transforming data — filtering, casting, deduplication, and null handling in the Silver layer.
