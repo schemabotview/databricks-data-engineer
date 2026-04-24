@@ -1,0 +1,73 @@
+Two powerful tools extend what you can express in pure SQL: SQL UDFs let you encapsulate reusable logic as named functions registered in the metastore; higher-order functions let you operate on arrays and maps inline, without exploding them into rows first.
+
+SQL UDFs.
+
+A SQL UDF, or User Defined Function, is created using CREATE OR REPLACE FUNCTION followed by a fully qualified name in the format schema dot function name. You then declare the parameters with their types, declare the return type after RETURNS, and write the function body after RETURN. The body is a single SQL expression — any built-in function, operator, or CASE WHEN construct can appear there.
+
+Once created, you call the UDF anywhere a built-in function would appear in a query — in SELECT lists, WHERE clauses, CASE WHEN branches, and even inside other UDF definitions.
+
+A key property of persistent SQL UDFs is that they are registered in the metastore. They survive session restarts and are available to all users who have access to the schema. You inspect a UDF's definition using DESCRIBE FUNCTION EXTENDED followed by the qualified name. You drop one using DROP FUNCTION with the qualified name.
+
+Temporary SQL UDFs are different. You add the TEMPORARY keyword and omit the schema qualifier. The UDF exists only for the duration of the current SparkSession and is never written to the metastore. Use temporary UDFs for one-off logic or exploratory work where persistence is not needed.
+
+UDFs can call other UDFs in their body. This enables composable logic — you can build a higher-level function on top of a lower-level one, just as you would with methods in application code.
+
+UDF Limitations.
+
+SQL UDFs are opaque to the Catalyst optimizer. Catalyst cannot look inside the UDF body to push filters, reorder operations, or apply other optimizations — it treats the entire UDF as a black box that takes inputs and returns an output.
+
+The practical implication is that if you can express the same logic with built-in Spark SQL functions, you should prefer the built-in approach. Catalyst can fully optimize built-in expressions. UDFs are best for logic that genuinely requires encapsulation or cannot be expressed with built-ins.
+
+It is worth knowing that SQL UDFs are significantly faster than Python UDFs. SQL UDFs execute entirely on the JVM alongside Spark's data processing. Python UDFs require serializing data from the JVM to the Python interpreter and back for every row — a substantial overhead. When both options are available, a SQL UDF is the better choice for performance.
+
+Higher-Order Functions.
+
+Higher-order functions are Spark SQL functions that take a lambda expression as one of their arguments and apply it to each element of an array. The lambda syntax uses an arrow: element, arrow, expression.
+
+TRANSFORM applies the lambda to every element and returns a new array of the same size. If your array contains prices and you want to add tax, TRANSFORM is the tool. You can also call a UDF inside a TRANSFORM lambda, applying it element-by-element to all items in the array.
+
+FILTER applies the lambda to every element and returns a new array containing only the elements for which the lambda returned true. If your array contains item amounts and you want only the expensive ones, use FILTER with a condition.
+
+EXISTS returns true if at least one element in the array satisfies the lambda. It is the higher-order equivalent of asking "does this collection contain anything matching my condition?"
+
+FORALL returns true only if every element satisfies the lambda. If any element fails the condition, FORALL returns false.
+
+REDUCE aggregates an array into a single scalar value. You provide a zero value as the starting accumulator, a merge lambda that combines the accumulator with each element, and an optional finish lambda that transforms the final accumulated result. The canonical example is summing all elements: the zero is zero, the merge adds each element to the accumulator.
+
+Array Functions.
+
+EXPLODE is one of the most commonly used array functions. It takes a row with an array column and produces one output row per array element. The other columns in the original row are duplicated for each element.
+
+There are three variants. Plain EXPLODE drops rows where the array is null or empty — those rows simply disappear from the output. EXPLODE_OUTER preserves rows with null arrays, producing one output row where the exploded element column is null. POSEXPLODE returns both a position index, starting at zero, and the element value, as two separate columns.
+
+COLLECT_LIST and COLLECT_SET are the inverse of EXPLODE. They are aggregate functions that combine multiple rows into a single array column. COLLECT_LIST preserves duplicates and ordering within the group. COLLECT_SET removes duplicates. A common pattern is to EXPLODE during Silver processing to work with individual elements, then COLLECT_SET during Gold aggregation to produce a list of unique values per entity.
+
+Several other array functions appear frequently in the exam. SIZE returns the number of elements. It returns minus one for null arrays rather than throwing, which makes it null-safe. ARRAY_CONTAINS tests membership. ARRAY_DISTINCT removes duplicate elements. ARRAY_SORT sorts in ascending order. FLATTEN removes one level of nesting from an array of arrays. ARRAY_UNION, ARRAY_INTERSECT, and ARRAY_EXCEPT perform set operations on two arrays.
+
+Map Functions.
+
+A map is a collection of key-value pairs. Spark SQL provides several functions for working with maps.
+
+You access a value by key using bracket notation: map name, then the key in square brackets. ELEMENT_AT is the function equivalent.
+
+MAP_KEYS returns all the keys as an array. MAP_VALUES returns all the values as an array. These are useful when you need to apply array functions to a map's keys or values.
+
+EXPLODE on a map produces one row per key-value pair, with two columns named key and value. This is useful for pivoting a map into a tabular format.
+
+STR_TO_MAP parses a delimited string into a map. You provide the string, a pair delimiter, and a key-value delimiter. For example, given a string like "page:checkout,user_id:CUST01", STR_TO_MAP with comma as the pair delimiter and colon as the key-value delimiter produces a map with two entries. This pattern is common with event tracking data where properties are encoded as delimited strings.
+
+Summary.
+
+SQL UDFs are created with CREATE OR REPLACE FUNCTION and persisted in the metastore. They are reusable across sessions. TEMPORARY UDFs are session-scoped only. UDFs can call other UDFs.
+
+SQL UDFs are opaque to Catalyst — prefer built-in functions when possible. SQL UDFs are faster than Python UDFs because they stay on the JVM.
+
+Higher-order functions — TRANSFORM, FILTER, EXISTS, FORALL, and REDUCE — apply lambda expressions to array elements, avoiding the need to explode arrays into rows for simple transformations.
+
+EXPLODE converts an array to multiple rows. EXPLODE_OUTER keeps null-array rows. POSEXPLODE adds a position index. COLLECT_LIST and COLLECT_SET are the inverse — they aggregate rows back into arrays.
+
+FLATTEN removes one level of nesting. ARRAY_DISTINCT deduplicates. SIZE returns element count.
+
+Map functions — MAP_KEYS, MAP_VALUES, bracket access, EXPLODE, and STR_TO_MAP — provide a complete toolkit for working with key-value data.
+
+In the next topic, we will look at Python UDFs, vectorized UDFs with pandas, and notebook control flow with dbutils.
