@@ -1,0 +1,97 @@
+Auto Loader is Databricks's solution for incrementally ingesting files from cloud storage as they arrive. It is the recommended approach for Bronze layer ingestion at scale — handling everything from a few files per hour to millions of files continuously, with exactly-once guarantees.
+
+The Problem Auto Loader Solves.
+
+Raw data lands in cloud storage continuously — sensor readings, application events, change data capture exports. A naive ingestion approach would read the entire directory on every run and deduplicate against what has already been loaded. That works for hundreds of files but fails at millions, because listing and comparing millions of file names is expensive and slow.
+
+Auto Loader solves this with stateful file tracking. It remembers which files it has already processed using a checkpoint. On each run, it processes only new files — no full directory scan, no deduplication logic needed in your code. It can discover new files either by listing the directory periodically or by subscribing to cloud file-arrival events, which scales far better.
+
+Auto Loader is implemented as a Structured Streaming source using a special format called cloudFiles. This means all of Spark Streaming's fault-tolerance and exactly-once guarantees apply automatically.
+
+Basic Syntax.
+
+To read with Auto Loader, you call spark.readStream, set the format to cloudFiles, and provide two required options. The first is cloudFiles.format, which tells Auto Loader the format of the source files — json, csv, parquet, avro, text, or binaryFile. The second is cloudFiles.schemaLocation, a path where Auto Loader stores the inferred schema between runs.
+
+You then call load with the source directory path. This gives you a streaming DataFrame that you pipe into a writeStream just like any other Structured Streaming source. You set the output format to delta, the output mode to append, provide a checkpointLocation, choose a trigger, and call start with the target path or toTable with a table name.
+
+Schema Inference and Evolution.
+
+Auto Loader infers the schema from the first batch of files and stores it at the schema location. On subsequent runs, it reuses the stored schema without re-scanning the files. This makes startup fast even with large directories.
+
+By default, Auto Loader infers all columns as strings. Set the cloudFiles.inferColumnTypes option to true to have it infer actual types — integers, doubles, dates, and timestamps. You can also provide schema hints for specific columns using cloudFiles.schemaHints, which is useful when Auto Loader's inference gets a type wrong.
+
+The schema evolution mode controls what happens when new files arrive with columns that are not in the current stored schema. There are four modes.
+
+The default mode is addNewColumns. When a new column is discovered, Auto Loader adds it to the stored schema and restarts the stream to pick up the change. This is the right default for most Bronze ingestion.
+
+The rescue mode never fails due to schema changes. Instead, any column in the source file that does not match the current schema is serialized as JSON and stored in a special column called underscore rescued data. The stream continues without restarting. This is useful when you want pipeline continuity over perfect schema accuracy, and you can process the rescued data later.
+
+The failOnNewColumns mode causes the stream to fail if any new column is discovered. Use this when you have strict schema governance and want to be notified immediately of any upstream schema change.
+
+The none mode silently ignores new columns — they are dropped. Use this when you deliberately want to exclude columns that do not match your current schema.
+
+A detail worth remembering for the exam: the underscore rescued data column appears automatically in rescue mode. You do not configure its name. It stores unexpected values as a JSON string, not as structured columns.
+
+File Discovery Modes.
+
+Auto Loader supports two modes for detecting new files.
+
+Directory listing is the default. Auto Loader lists the source directory on each trigger and compares the file names against the checkpoint to find new arrivals. It requires zero cloud configuration. It works well up to roughly ten thousand files per trigger. Beyond that, listing the directory becomes expensive.
+
+File notification mode is the scalable alternative. You configure your cloud storage to emit an event whenever a new file is created — through an S3 Event into an SQS queue, or through Azure Data Lake Storage notifications into Event Grid. Auto Loader subscribes to these events and processes files as they arrive rather than listing the directory. This scales to millions of files, has lower latency, and avoids the cost of repeated directory listings. It does require cloud-side setup — creating the queue, configuring the notifications, and granting Auto Loader the necessary permissions.
+
+Enable file notification mode by setting the cloudFiles.useNotifications option to true and specifying the cloud region.
+
+Checkpointing and Trigger Modes.
+
+The checkpoint is what makes Auto Loader stateful. It stores the set of files that have been processed, the stream offset within the current batch, and the inferred schema. The checkpoint must be stored on durable cloud storage — not on the driver's local disk, which disappears when the cluster terminates.
+
+Deleting the checkpoint forces Auto Loader to reprocess all files from the beginning. This is useful for full reprocessing scenarios but will create duplicates if the target table already contains data. Be careful.
+
+There are four trigger modes for controlling how often Auto Loader processes files.
+
+The availableNow trigger processes all files that have arrived since the last run, potentially in multiple micro-batches, then stops the stream. This is the right choice when you run Auto Loader as a scheduled Databricks Job — it processes everything pending and exits cleanly.
+
+The processingTime trigger runs a micro-batch every specified interval and keeps the stream running continuously. Use this when you need near-real-time ingestion with low and predictable latency.
+
+The once trigger processes a single micro-batch and stops. It is deprecated — use availableNow instead, which is more efficient because it processes all pending files rather than just one batch.
+
+No trigger at all is the continuous default — Spark processes data as fast as it can in an endless loop. This gives minimum latency but requires the cluster to run continuously.
+
+For most data engineering use cases, availableNow with a Databricks Jobs schedule is the right pattern. It gives you incremental ingestion with the economics of a batch job.
+
+Source Metadata.
+
+Auto Loader exposes the underscore metadata column for each row, the same hidden column available in direct file queries. You can select fields from it to add auditing information to every Bronze row: the file path that the row came from, the file modification time, and the ingestion timestamp.
+
+Including source file information in the Bronze table is a best practice. It lets you trace any Bronze row back to the exact source file, which is invaluable for debugging data quality issues and for selective reprocessing.
+
+Auto Loader vs COPY INTO.
+
+Both Auto Loader and COPY INTO ingest new files incrementally and idempotently. The choice comes down to volume and operational complexity.
+
+COPY INTO is a SQL command. It is simple to write, requires no checkpoint management, and works well for thousands of files per run. Use it for low-to-medium batch ingestion where simplicity matters more than scale.
+
+Auto Loader is a Structured Streaming source. It requires managing a checkpoint, but it scales to millions of files using file notification, supports richer schema evolution, and can run continuously with low latency. Use it for high-volume or near-real-time ingestion.
+
+The decision rule: if you expect more than roughly ten thousand files per run, or you need near-real-time latency, use Auto Loader. Otherwise, COPY INTO is simpler and sufficient.
+
+Summary.
+
+Auto Loader incrementally ingests new files using the cloudFiles Structured Streaming source. It tracks processed files via a checkpoint and never re-reads already-ingested files.
+
+Two required options: cloudFiles.format for the source file format, and cloudFiles.schemaLocation for persisting the inferred schema.
+
+Four schema evolution modes: addNewColumns adds new columns and restarts the stream; rescue captures unknown columns in the underscore rescued data JSON string column without restarting; failOnNewColumns fails on any schema change; none silently ignores new columns.
+
+Two file discovery modes: directory listing for up to ten thousand files per trigger, file notification for millions of files.
+
+The checkpoint stores file tracking and stream offset. Deleting it forces a full reprocess.
+
+Trigger modes: availableNow processes all pending files then stops — preferred for scheduled jobs. processingTime runs continuously. once is deprecated, prefer availableNow.
+
+The underscore metadata column exposes file name, path, and modification time per row — include these in Bronze for auditability.
+
+Use Auto Loader for high-volume or continuous ingestion. Use COPY INTO for simpler batch ingestion of thousands of files.
+
+In the next topic, we will look at change data capture and MERGE INTO — processing CDC feeds and implementing upsert patterns to keep Silver tables in sync with source systems.
