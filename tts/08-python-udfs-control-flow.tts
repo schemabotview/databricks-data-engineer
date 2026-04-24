@@ -1,0 +1,83 @@
+The previous notebook covered SQL UDFs. This notebook covers Python UDFs — when you need the full power of Python libraries or complex logic inside a Spark transformation — and notebook control flow — how Databricks notebooks can be parameterized, chained, and orchestrated.
+
+Python UDFs.
+
+A Python UDF is a regular Python function that Spark knows how to call on each row of a DataFrame. You create one using the udf decorator from pyspark.sql.functions, annotating it with the return type. The return type must be a Spark SQL type such as StringType, DoubleType, or IntegerType.
+
+When you apply a Python UDF to a column, Spark calls your Python function once for every row in the dataset. Always handle the null case explicitly — Python UDFs receive Python None for null values, and if your function throws on None, the job will fail.
+
+To use a Python UDF inside a spark.sql call, you must first register it with a name using spark.udf.register. You pass the name, the function, and the return type. The registered name is then callable from SQL strings in the current session. This registration is session-scoped — it is not persisted to the metastore. Every session that needs the function must re-register it.
+
+The Python UDF Performance Problem.
+
+Python UDFs are slow at scale, and understanding why is important for the exam.
+
+Every Python UDF call crosses the boundary between the JVM, where Spark runs, and the Python process, where your function runs. Crossing this boundary requires serializing the data into a Python-compatible format, sending it to Python, running the function, and deserializing the result back to the JVM. This happens once per row.
+
+For a table with one hundred million rows, that is one hundred million serialization round-trips. This is the primary reason Python UDFs are slow.
+
+The hierarchy for choosing between options is: use built-in Spark SQL functions first because Catalyst can optimize them. If built-ins are insufficient, use a SQL UDF because it runs on the JVM with no serialization. If you need Python logic, use a Pandas UDF because it batches the data. Use a plain Python UDF only as a last resort for low-volume or exploratory work.
+
+Pandas UDFs — Vectorized.
+
+Pandas UDFs, also called vectorized UDFs, solve the per-row serialization problem by batching. Instead of sending one row at a time, Spark collects a batch of rows, serializes the entire batch as an Apache Arrow buffer, sends it to Python, and runs your function on the whole batch as a pandas Series. The result is serialized back as Arrow and returned to the JVM.
+
+The cost of serialization is paid once per batch, not once per row. For large datasets, this is dramatically faster than plain Python UDFs.
+
+You create a Pandas UDF using the pandas_udf decorator. The function signature uses pandas Series types for inputs and outputs.
+
+The most common pattern is Series to Series — one input column becomes one output column. You write a function that takes a pandas Series and returns a pandas Series of the same length. Inside the function, you can use any pandas operation, numpy function, or Python library.
+
+The second pattern is Series to Scalar, used for custom aggregations. The function takes one or more Series and returns a single scalar value. You use it in a groupBy dot agg call just like a built-in aggregation function. This is useful for custom statistics that do not exist as built-ins, such as a weighted average or a custom percentile.
+
+The third pattern is Iterator of Series. Use this when your function requires expensive one-time setup — loading a machine learning model from storage, opening a database connection, or initializing a large lookup table. The function receives an iterator of batches. You perform the setup before the loop and yield results for each batch. The setup runs once per partition, not once per batch.
+
+Notebook Control Flow — dbutils.
+
+Databricks notebooks can be parameterized and chained using the dbutils utility library.
+
+Widgets let you pass parameters into a notebook at runtime. You declare a widget using dbutils.widgets.text for a free-text input, dbutils.widgets.dropdown for a fixed list of choices, or dbutils.widgets.combobox for a dropdown that also accepts typed input. Each widget has a name, a default value, and a display label.
+
+When a notebook runs as a job task, the job configuration populates the widget values. You read the current value using dbutils.widgets.get with the widget name.
+
+In SQL cells within the notebook, you reference a widget value using dollar sign, curly braces, widget name. In Python spark.sql calls, the cleanest approach is to read the widget value into a Python variable and then use an f-string to interpolate it into the SQL string.
+
+Conditional logic based on widget values is a common pattern for environment-aware pipelines. You read the env widget, check if it equals prod, and choose the target catalog, schema, or write mode accordingly. This single notebook can then serve both development and production runs.
+
+You remove widgets with dbutils.widgets.remove for a single widget or dbutils.widgets.removeAll for all of them. Always clean up widgets at the end of a notebook to avoid stale state in interactive sessions.
+
+Chaining Notebooks.
+
+One notebook can call another using dbutils.notebook.run. You pass the path to the child notebook, a timeout in seconds, and a dictionary of arguments. The arguments become widget values in the child notebook — the child reads them with dbutils.widgets.get just like any other widget.
+
+The call is synchronous. The parent notebook waits for the child to finish. If the child exceeds the timeout, an error is raised in the parent.
+
+The child notebook returns a value to the parent using dbutils.notebook.exit. The argument must be a string. The return value of dbutils.notebook.run in the parent is that string. If you need to pass structured data such as a record count or a JSON status object, serialize it as a JSON string in the child and parse it in the parent.
+
+An important exam point: dbutils.notebook.exit not only returns a value — it also stops the notebook's execution. Anything after the exit call does not run. This makes it useful for early exit patterns: check a precondition at the start of a notebook, and if it is not met, exit immediately with a status message rather than letting the notebook run to completion and fail partway through.
+
+For production pipelines, prefer Databricks Jobs with multiple tasks over notebook chaining. Jobs provide each task with its own cluster configuration, support parallel task execution, have built-in per-task retry logic, and provide full observability through the job run UI and alert integrations. Notebook chaining with dbutils.notebook.run is simpler but runs everything on the same cluster sequentially with limited observability.
+
+Mixing Python and SQL.
+
+Python and SQL cells coexist naturally in a Databricks notebook. The bridges between them are straightforward.
+
+To run SQL from Python, use spark.sql with the query as a string or f-string. To make a Python DataFrame queryable from a SQL cell, call createOrReplaceTempView on it with a name. To bring a SQL result back into Python, call collect on the DataFrame and access the rows and columns by index.
+
+A security note: when building SQL strings using f-strings, only interpolate trusted, validated values — like a widget-controlled environment name or a pre-validated date string. Never interpolate raw user-supplied strings into SQL, as this creates SQL injection vulnerabilities.
+
+Summary.
+
+Python UDFs are created with the udf decorator and a return type. Register with spark.udf.register to use in SQL. Registration is session-scoped only.
+
+Python UDFs are slow because they serialize data per row across the JVM-Python boundary. Use built-ins first, then SQL UDFs, then Pandas UDFs, then plain Python UDFs as a last resort.
+
+Pandas UDFs batch rows via Apache Arrow. Three patterns: Series to Series for transforms, Series to Scalar for aggregations, Iterator of Series for expensive initialization like loading a model.
+
+dbutils.widgets parameterizes notebooks. Read with dbutils.widgets.get. Use dollar-sign-curly-brace syntax in SQL cells and f-strings in Python spark.sql calls.
+
+dbutils.notebook.run calls a child notebook synchronously and returns its exit string. dbutils.notebook.exit stops execution and returns a string to the caller.
+
+For production, prefer Databricks Jobs over notebook chaining — Jobs provide per-task clusters, parallelism, retries, and full observability.
+
+This completes Section 2 — ELT with Spark SQL and Python. The next section covers incremental data processing, starting with Auto Loader.
