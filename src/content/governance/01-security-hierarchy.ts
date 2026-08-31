@@ -1,0 +1,24 @@
+import type { Section } from '../types'
+
+export const securityHierarchy: Section = {
+  id: 'security-hierarchy',
+  title: 'The security hierarchy',
+  scene: 'security-hierarchy',
+  slide: `## The security hierarchy
+
+Unity Catalog's permission model is a **strict tree**, and its most important property is **inheritance**: a privilege granted at any level flows down to everything below it.
+
+**metastore → catalog → schema → object.** A grant on a catalog reaches every schema and table inside; a grant on a schema reaches every table and view in it.
+
+### Two gating privileges
+Needed at **every level above** the object:
+
+- **\`USE CATALOG\`** — without it you can't even see the schemas
+- **\`USE SCHEMA\`** — without it you can't see the tables
+
+**The #1 trap on the exam:** a \`SELECT\` on a table is **useless** on its own. Any answer that grants \`SELECT\` but omits \`USE CATALOG\` and \`USE SCHEMA\` is wrong.
+
+\`GRANT SELECT ON SCHEMA\` covers every existing **and future** table there — powerful, but a foot-gun; prefer narrower grants in production.`,
+  narration:
+    "The security hierarchy — how Unity Catalog governs access. Unity Catalog's permission model is a strict tree, and the single most important property is inheritance: a privilege granted at any level flows down to everything below it. Picture the levels. At the top, the metastore. Under it, catalogs — and a grant on a catalog inherits to all the schemas, tables, and views inside. Under each catalog, schemas — and a grant on a schema inherits to all the tables and views in that schema. And at the bottom, the objects themselves: tables, views, volumes, functions, models, materialized views. Now, two privileges gate access at every level above an object, and you have to have them. Use-catalog on a catalog — without it, you can't even see the schemas inside. And use-schema on a schema — without it, you can't see the tables inside. Here's the consequence, and it is the single most common trap on the exam. A select on silver-dot-customers, all by itself, is useless if the principal doesn't also have use-catalog on fintech-dev and use-schema on silver. So any answer choice that grants select but omits use-catalog and use-schema is wrong. Lock that in. There's also an inheritance shortcut worth knowing: grant-select-on-schema gives select on every existing and future table in that schema. It's powerful, but it's a foot-gun — in production you generally prefer narrower grants. And to ground the whole module, the bank has three groups, all starting with zero access. Analysts see aggregated tables but no P-I-I. Fraud-analysts see masked P-A-N, all rows, but only the fraud schema. And compliance sees full P-I-I, but only for their own region. Every grant in this module adds exactly what a group needs — and nothing more. That's least privilege in practice.",
+}

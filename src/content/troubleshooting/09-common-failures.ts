@@ -1,0 +1,23 @@
+import type { Section } from '../types'
+
+export const commonFailures: Section = {
+  id: 'common-failures',
+  title: 'Common failures — startup & libraries',
+  scene: 'common-failures',
+  slide: `## Common failures
+
+Two failure classes the exam tests by scenario. First rule: when a cluster fails to start, the **Event Log tab is your source of truth**.
+
+### Four startup modes
+- **\`InstanceLimitExceeded\`** — cloud **quota or capacity**; the type isn't available in that region/AZ. Fix: change type, change AZ, request quota, or go serverless
+- **\`NotAuthorizedToAssumeRole\` / 403** — **IAM**; fix the role's trust policy and attached policies
+- **\`INIT_SCRIPT_FAILURE\`** — read the init-script log and fix it. Init scripts don't run on serverless
+- **Library install failed** — find it in the **Libraries** tab, remove or pin it
+
+### Library conflicts
+Two packages needing incompatible versions. Resolution order: **notebook-scoped \`%pip install\`** (its own env per notebook) → **pin versions** (\`mypkg==2.4.1\`) → the **ML runtime** (pre-resolved) → **serverless**.
+
+**Two tells:** \`InstanceLimitExceeded\` is quota — **not a memory setting**. Two notebooks colliding on a shared cluster → notebook-scoped \`%pip\`.`,
+  narration:
+    "Common failures — cluster startup problems and library conflicts. These are two failure classes the exam tests by scenario, so let's learn to recognise the scenarios. And the first rule: when a cluster fails to start, the Event Log tab is your source of truth. Cluster startup has four common failure modes. First, cloud capacity or quota — errors like instance-limit-exceeded or insufficient-capacity. The instance type just isn't available in that region or availability zone, or your account's quota is exhausted. The fix is to change the instance type, change the A-Z, request a quota increase, or switch to serverless. Second, I-A-M or permissions — not-authorized-to-assume-role, or a 403 from S-T-S. The cluster's instance profile or service principal can't reach a resource it needs, so you fix the role's trust policy and its attached policies. Third, an init script failing — you'll see init-script-failure, often a pip-install hitting a network policy. You read the init-script log, fix it, and restart. And note: init scripts don't run on serverless, which is one more reason serverless dodges this whole class. Fourth, a library install failing — a bad PyPI or Maven library leaves the cluster in an error state, and you find it in the Libraries tab and remove or pin it. Then, library conflicts. Two packages needing incompatible versions of the same dependency. The symptoms are a deep import-error inside some third-party library, or the classic \"it worked yesterday and broke after the D-B-R upgrade.\" The resolution order is: use notebook-scoped percent-pip-install, so each notebook gets its own environment — that's the fix when only one notebook needs the dependency. Pin versions in cluster libraries — my-package equals two-point-four-point-one, not just my-package. Use the D-B-R M-L runtime for M-L packages, which are pre-resolved. Or use serverless, where Databricks resolves the whole stack and you just percent-pip-install. Two exam tells to lock in. Instance-limit-exceeded is a cloud quota-or-capacity issue — it is not a memory setting, so don't reach for driver memory. And two notebooks colliding on a shared cluster is solved with notebook-scoped percent-pip, or serverless.",
+}

@@ -1,0 +1,25 @@
+import type { Section } from '../types'
+
+export const timeTravel: Section = {
+  id: 'time-travel',
+  title: 'Time travel — querying an old version',
+  scene: 'code-time-travel',
+  slide: `## Time travel
+
+The log is **append-only**, so every past version still exists — until its files are \`VACUUM\`-ed. Query the past by version or by time.
+
+### Three operations
+- **\`VERSION AS OF n\`** — the table at commit \`n\` (*what did the model train on?*)
+- **\`TIMESTAMP AS OF '…'\`** — the table at a wall-clock moment (*what did the dashboard show before the bad backfill?*)
+- **\`RESTORE TABLE …\`** — writes a new commit that makes *current* equal a past version
+
+Time travel rewinds your **read**; \`RESTORE\` rewinds the **table**.
+
+### Retention decides how far back
+- **\`logRetentionDuration\`** — default **30 days** (the commit JSONs)
+- **\`deletedFileRetentionDuration\`** — default **7 days** (removed files, before \`VACUUM\`)
+
+\`VACUUM\` aggressively and you lose the ability to travel back past retention — so be deliberate.`,
+  narration:
+    "Time travel — querying an old version of a table. Because the Delta log is append-only, every past state of the table still exists — as long as the data files it pointed to haven't been vacuumed away. You read a past state either by version number, or by timestamp. Version-as-of n gives you the table exactly as it was at commit n. That's perfect for reproducibility — for answering \"what data did this model actually train on?\" Timestamp-as-of gives you the table as of a wall-clock moment, which is what you want during incident response: \"what did the fraud dashboard show at nine a.m., before the bad backfill landed?\" Those two rewind your read. Restore-table goes one step further — it writes a brand-new commit that makes the current table equal to a past version. So time travel rewinds what you read; restore rewinds the table itself. How far back you can go is governed by two properties. Log-retention-duration, defaulting to thirty days, controls how long the commit J-SON files are kept. Deleted-file-retention-duration, defaulting to seven days, controls how long files marked for removal survive before vacuum is allowed to delete them. And here's the catch: if you vacuum aggressively, you lose the ability to time-travel any further back than that retention allows. So be deliberate about it.",
+}

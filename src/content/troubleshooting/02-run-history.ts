@@ -1,0 +1,20 @@
+import type { Section } from '../types'
+
+export const runHistory: Section = {
+  id: 'run-history',
+  title: 'Run history — trend, not snapshot',
+  scene: 'run-history',
+  slide: `## Run history
+
+Every run, with its state, start time, duration and a **sparkline**. Its most valuable signal is **trend against the historical baseline** — not what one run did, but how it compares to the last hundred.
+
+Three shapes, and **the shape is your first diagnosis**:
+
+- **Gradual ramp** — creeping up over weeks. **Data growth** outpacing capacity, or a growing fact table making a join progressively skewed. Nothing *broke*; the data got bigger
+- **Step change** — jumps one day and stays up. A **code or config change**, a new upstream source, a runtime upgrade. Go find what shipped that day
+- **Spiky** — mostly 10 minutes, occasionally 90. **Contention** with another job, or a bad-data day
+
+**Exam:** *"median tripled overnight — where first?"* → **run history** for the trend, then the **task graph** of a slow run. One slow run tells you very little on its own.`,
+  narration:
+    "Lakeflow Jobs run history — read it as a trend, not a snapshot. The run history view lists every run of a job — its state, start time, duration, and a sparkline of recent durations. And its single most valuable signal is trend against the historical baseline. Not what one run did, but how this run compares to the last hundred. That comparison is the whole point. There are three shapes to recognise, and each one points at a different cause — so the shape itself is your first diagnosis. A gradual ramp is the duration creeping up over weeks. That's usually data growth outpacing your cluster capacity, or a slowly-growing fact table that's making a join progressively more skewed. Nothing \"broke\" — the data just got bigger. A step change is a single day where the curve jumps and then stays up. That's usually a code or config change, a new upstream source, or a runtime upgrade. Something changed on a specific date, and you can go find what shipped that day. And a spiky pattern is most runs at ten minutes with an occasional run at ninety. That's usually concurrency or resource contention — another job competing for the cluster — or an occasional bad-data day. So a ramp says capacity and growth; a step says something changed on date X; a spike says contention. The shape tells you where to go next. And the exam's framing is consistent: \"a job's median duration tripled overnight — where do you look first?\" The answer is the run history view for the trend, then the task graph of a slow run. Because a single slow run tells you very little on its own; it's the trend that tells you whether this is new, gradual, or just a one-off.",
+}

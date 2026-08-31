@@ -1,0 +1,23 @@
+import type { Section } from '../types'
+
+export const gitFolders: Section = {
+  id: 'git-folders',
+  title: 'Databricks Git Folders',
+  scene: 'git-folders',
+  slide: `## Databricks Git Folders
+
+A workspace folder backed by a Git remote — GitHub, GitLab, Azure DevOps, Bitbucket. In plain terms, **Git inside the Databricks UI**.
+
+From the UI you can clone a repo, switch or create a branch, commit and push, pull updates, and open a pull request (the UI links out to the remote).
+
+### Two facts the exam tests
+- *"How do engineers commit notebook changes from inside Databricks?"* → **Git Folders**. Exporting notebooks and adding them to a repo by hand is simply wrong on a modern exam
+- Workspace files **outside** a Git Folder are **not under source control at all**
+
+**Naming:** Git Folders is current; **Repos** is the legacy name for the same feature.
+
+### How this relates to bundles
+They're complementary. **Git Folders are how humans edit and commit; bundles are how that code gets deployed.** CI rarely uses a Git Folder — the runner checks out the repo and runs \`bundle deploy\`.`,
+  narration:
+    "Databricks Git Folders — what the exam actually wants you to know. Databricks Git Folders, formerly called Databricks Repos, is a workspace folder backed by a Git remote — GitHub, GitLab, Azure DevOps, or Bitbucket. In plain terms, it brings Git right into the Databricks workspace U-I. From that U-I you can do everything you'd expect. Clone a repo into a workspace folder. Switch branches — check out an existing one or create a new one. Commit your local changes with a message, and push to the remote. Pull updates back down. And open a pull request — the U-I links out to the remote, like GitHub, to actually open it. There are two facts the exam tests here. First, Git Folders are the right answer to \"how do engineers commit notebook changes from inside Databricks.\" The legacy alternative — exporting notebooks and manually adding them to a repo — is simply wrong on a modern exam. Second, workspace files outside a Git Folder are not under source control at all. So production code belongs either in a Git Folder, or in a bundle that gets deployed to a workspace path. Quick naming watch: Databricks Git Folders is current, Databricks Repos is legacy — same feature, two names. And it's worth being clear on how this relates to bundles, because they're complementary. Git Folders are how humans edit and commit code in the workspace. Bundles are how that committed code gets deployed to a workspace. In C-I you rarely use a Git Folder — the runner just checks out the repo and runs bundle-deploy. But for interactive development inside Databricks, a Git Folder is the source-controlled home for your notebooks.",
+}

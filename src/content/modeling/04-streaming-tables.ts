@@ -1,0 +1,23 @@
+import type { Section } from '../types'
+
+export const streamingTables: Section = {
+  id: 'streaming-tables',
+  title: 'Streaming tables',
+  scene: 'streaming-table',
+  slide: `## Streaming tables
+
+An **append-only** Delta table fed by a Structured Streaming query — declared as a first-class **UC object**, instead of hand-writing imperative \`readStream\` / \`writeStream\`.
+
+\`CREATE OR REFRESH STREAMING TABLE … AS SELECT * FROM STREAM read_files(…)\`
+
+**\`read_files\` in stream mode is the SQL surface of Auto Loader.** Same checkpointing, same exactly-once semantics you'd get from \`cloudFiles\` in Python — but the source is just a SQL function call. Streaming ingestion without the streaming boilerplate.
+
+### Two pipeline modes
+- **Triggered** — run to completion against what's available, then stop. **Lower cost**
+- **Continuous** — run forever, process on arrival. **Lower latency, higher cost**
+
+### The exam pattern
+*Records arrive continuously* → streaming table. *Scheduled heavy aggregation* → materialized view.`,
+  narration:
+    "Streaming tables — append-only, continuous, and declarative. A streaming table is an append-only Delta table fed by a Structured Streaming query — but declared as a first-class Unity Catalog object, instead of you hand-writing imperative read-stream and write-stream code. Look at the shape: create-or-refresh-streaming-table, a name, and then select-star-from-stream, calling read-files against a landing folder. That read-files function, in stream mode, is the S-Q-L surface of Auto Loader. You get exactly the same checkpointing and exactly-once semantics you'd get from cloud-files in Python — but here the source is just a S-Q-L function call. That's the whole appeal: streaming ingestion without the streaming boilerplate. Now there are two pipeline modes, and they drive your cost and latency. Triggered means the pipeline runs to completion against whatever data is available right now, then shuts down — that's the streaming-tables-on-a-schedule pattern, and it's lower cost. Continuous means the pipeline runs forever, processing data the moment it arrives — that's lower latency, but higher cost because the compute never stops. And the exam pattern: a streaming table is the right answer whenever a question describes records arriving continuously, where the table should update continuously. Contrast it once more with a materialized view. An M-V recomputes an aggregation on a schedule — periodic. A streaming table appends new rows as they land — continuous. Match \"continuous arrival\" to streaming table, and \"scheduled heavy aggregation\" to materialized view, and you'll get those questions right every time.",
+}

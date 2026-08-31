@@ -1,0 +1,26 @@
+import type { Section } from '../types'
+
+export const definingAJob: Section = {
+  id: 'defining-a-job',
+  title: 'Defining a job — UI, REST & YAML',
+  scene: 'code-job-yaml',
+  slide: `## Defining a job
+
+Three ways. The exam doesn't ask for exact syntax, but it expects you to **recognise the YAML shape**, because that's how Automation Bundles deploy jobs in the next course.
+
+- **UI** — point-and-click; fine for one-offs and exploring
+- **REST API** — \`POST /api/2.1/jobs/create\` with a JSON body — the same JSON that bundles emit underneath
+- **YAML in an Automation Bundle** — the **production** pattern: version-controlled, promoted dev → prod
+
+### Read the structure, not the syntax
+Everything in this course is sitting in that YAML:
+
+- the **DAG** → \`depends_on\`
+- the **trigger** → \`schedule\`
+- the **retries** → \`max_retries\`
+- the **always-fires** notification → \`run_if: ALL_DONE\`
+
+It's the same job the UI shows you, declared as code — and declaring jobs as code is exactly where course 7 picks up.`,
+  narration:
+    "Defining a job — U-I, R-E-S-T A-P-I, and Y-A-M-L. There are three ways, and while the exam doesn't ask you for exact syntax, it does expect you to recognise the Y-A-M-L shape, because that's how Automation Bundles deploy jobs in module seven. The U-I is point-and-click — perfectly fine for one-offs and for exploring. The Jobs R-E-S-T A-P-I is a post to slash-api-2.1-slash-jobs-slash-create with a J-S-O-N body — and that's the very same J-S-O-N that Automation Bundles emit under the hood. And Y-A-M-L inside an Automation Bundle is the production pattern: version-controlled, and promoted from dev to prod. Let me walk the shape, because this ties the whole module together. Under resources, jobs, you name the job — fintech-nightly-ingest. It has a schedule with a quartz-cron expression, zero-zero-two-star-star-question-mark, at two a-m U-T-C. It has email-notifications on-failure to the on-call address. And it has a tasks list: ingest-cards is a notebook task on a shared E-T-L cluster with max-retries three; notify depends-on ingest-cards, with run-if all-done, so it always fires. And here's the point: read the structure, not the syntax. Everything we covered in this module is sitting right there in that Y-A-M-L. The D-A-G is the depends-on. The trigger is the schedule. The retries are max-retries. And the always-fires notification is run-if all-done. It's the exact same job the U-I shows you — just declared as code. And declaring jobs as code is precisely where module seven, on C-I-C-D and Automation Bundles, picks up the story.",
+}
