@@ -14,6 +14,7 @@ import {
   Workflow, Box, Cog, MemoryStick,
   Zap, Brain, Waves,
   Filter, Copy, Table2,
+  Plug, FileText,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -63,4 +64,6 @@ export const LUCIDE_ICONS: Record<string, LucideIcon> = {
   funnel: Filter, // a filtering / narrowing step (a semi/anti join, a WHERE)
   copy: Copy, // duplication — deduplicate, a broadcast copy
   table: Table2, // a table / tabular result
+  plug: Plug, // a managed connector (Lakeflow Connect)
+  file: FileText, // a file or log artifact (the Delta log, a checkpoint)
 }
