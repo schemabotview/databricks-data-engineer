@@ -58,10 +58,12 @@ const LOGO_CANDIDATES = [
 const LOGO_SVG = LOGO_CANDIDATES.find(existsSync) ?? null
 
 // The concept shown as the panel kicker.
-const CONCEPT = process.env.CONCEPT ?? 'AWS'
-// The right-side panel gradient (brand block). AWS-warm by default — it rhymes with the slide's
-// title-orange and reads well against the Zed-slate scene on the left. Override per-thumb with --panel.
-const DEFAULT_PANEL_BG = 'radial-gradient(118% 104% at 70% 34%, #ff9d3c 0%, #e8791a 42%, #7a3b0c 100%)'
+const CONCEPT = process.env.CONCEPT ?? 'Databricks'
+// The right-side panel gradient (brand block), anchored on Databricks red --brand #ff3621 (src/index.css)
+// — the same accent as the DATABRICKS eyebrow, the slide titles and every `service` node, so the panel
+// and the scene beside it are one palette. Reads well against the Zed-slate scene; override with --panel.
+// (This was AWS-warm — #ff9d3c/#e8791a — carried over unchanged when this app was ported from AWS.)
+const DEFAULT_PANEL_BG = 'radial-gradient(118% 104% at 70% 34%, #ff6b52 0%, #ff3621 42%, #7a1a0e 100%)'
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 // A slug → display fallback ("data-engineering" → "Data Engineering") when the registry lacks it.
 const titleCase = (slug) => slug.split(/[-_]/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
@@ -107,9 +109,24 @@ async function startDevServer(conceptDir) {
   return { child, url }
 }
 
-// course title from the typed COURSES registry (+ titles.json override if present), so the panel copy
-// matches what ships. The content files import ONLY `../types` (erased) → the bundle has no runtime deps.
+// Curated PUBLISH titles (scripts/titles.json), keyed by course id — the header a thumbnail wears on
+// YouTube ("Databricks Data Ingestion"), which is search-facing and so deliberately differs from the
+// registry's narrative in-app title ("Data Ingestion"). Optional: absent file → registry title.
+const PUBLISH_TITLES = (() => {
+  const f = join(here, 'titles.json')
+  if (!existsSync(f)) return {}
+  try {
+    const { _comment, ...titles } = JSON.parse(readFileSync(f, 'utf8'))
+    return titles
+  } catch {
+    return {}
+  }
+})()
+
+// course title: titles.json override first, else the typed COURSES registry, so the panel copy matches
+// what ships. The content files import ONLY `../types` (erased) → the bundle has no runtime deps.
 async function courseTitle(course) {
+  if (PUBLISH_TITLES[course]) return PUBLISH_TITLES[course]
   try {
     const result = await build({
       entryPoints: [resolve(appDir, 'src/content/index.ts')],

@@ -19,7 +19,7 @@
 
 import { execFile } from 'node:child_process'
 import { build } from 'esbuild'
-import { mkdirSync, writeFileSync, existsSync } from 'node:fs'
+import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs'
 import { promisify } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, resolve } from 'node:path'
@@ -34,13 +34,29 @@ const TAIL_MS = process.env.TAIL_MS ? +process.env.TAIL_MS : 500
 const CIRCLED = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩', '⑪', '⑫']
 
 // The concept + where the app deploys (the catalog path + deep links). Overridable for a different
-// host: SITE default graphl.in, APP_PATH default the vite build base (/aws-content). Deep link is
+// host: SITE default graphl.in, APP_PATH default the vite build base (/databricks-data-engineer). Deep link is
 // `${SITE}${APP_PATH}/#/<course>` (hash routing, see src/App.tsx).
-const CONCEPT = process.env.CONCEPT ?? 'AWS'
+const CONCEPT = process.env.CONCEPT ?? 'Databricks'
 const SITE = process.env.SITE ?? 'https://graphl.in'
-const APP_PATH = (process.env.APP_PATH ?? '/aws-content').replace(/\/$/, '')
+const APP_PATH = (process.env.APP_PATH ?? '/databricks-data-engineer').replace(/\/$/, '')
 const HASHTAGS =
-  '#AWS #CloudComputing #AWSCertified #DevOps #CloudArchitecture #AmazonWebServices #Cloud #TechEducation'
+  '#Databricks #DataEngineering #DatabricksCertified #DeltaLake #UnityCatalog #ApacheSpark #Lakehouse #TechEducation'
+
+// Curated PUBLISH titles (scripts/titles.json), keyed by course id — the search-facing name a course
+// carries on YouTube ("Databricks Data Ingestion"), deliberately distinct from the registry's narrative
+// in-app title ("Data Ingestion"). Used for this video's headline AND every series entry, so the
+// description names courses the same way the thumbnails and video titles do. Absent file → registry.
+const PUBLISH_TITLES = (() => {
+  const f = join(here, 'titles.json')
+  if (!existsSync(f)) return {}
+  try {
+    const { _comment, ...titles } = JSON.parse(readFileSync(f, 'utf8'))
+    return titles
+  } catch {
+    return {}
+  }
+})()
+const publishTitle = (course) => PUBLISH_TITLES[course.id] ?? course.title
 
 const titleCase = (slug) => slug.split(/[-_]/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 // m:ss (or h:mm:ss past an hour) — YouTube chapter format; first chapter must be 0:00.
@@ -72,7 +88,10 @@ async function loadRegistry() {
 const RULE = '━━━━━━━━━━━━━━━━'
 function compose({ course, chapters, series }) {
   const L = []
-  L.push(`${course.title} · ${CONCEPT}`)
+  // Headline: "<title> · <concept>", but drop the suffix when the publish title already leads with the
+  // concept ("Databricks Data Ingestion · Databricks" stammers; the publish title is the whole name).
+  const headline = publishTitle(course)
+  L.push(headline.toLowerCase().startsWith(CONCEPT.toLowerCase()) ? headline : `${headline} · ${CONCEPT}`)
   L.push(RULE)
   L.push(
     `Part of GraphL's ${CONCEPT} series — the diagram assembles top-to-bottom as the narration walks ` +
@@ -84,7 +103,7 @@ function compose({ course, chapters, series }) {
   L.push(RULE)
   L.push(`▶ ${CONCEPT.toUpperCase()} — THE SERIES`)
   series.forEach((s, i) => {
-    const label = s.id === course.id ? `${s.title}  ◀ this video` : s.title
+    const label = s.id === course.id ? `${publishTitle(s)}  ◀ this video` : publishTitle(s)
     L.push(`${CIRCLED[i] ?? '•'} ${label} → ${SITE}${APP_PATH}/#/${s.id}`)
   })
   L.push(RULE)

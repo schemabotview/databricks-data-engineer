@@ -1,4 +1,12 @@
 {
-  "_comment": "Curated publish titles (YouTube title + thumbnail header) per course, keyed by course id. An override for the registry's in-app narrative course.title \u2014 wire into gen-descriptions.mjs / thumb.mjs when the publish step should use these instead.",
-  "platform": "Databricks Platform & Compute"
+  "_comment": "Curated publish titles (YouTube title + thumbnail header) per course, keyed by course id. An override for the registry's in-app narrative course.title — the registry title reads as a chapter name in the app ('Delta Lake & Unity Catalog Foundations'), while these are search-facing and lead with the concept so a viewer scanning YouTube sees what the video is about first. Read by gen-descriptions.mjs (headline + series list) and thumb.mjs (panel header).",
+  "platform": "Databricks Platform & Compute",
+  "delta-uc": "Databricks Delta Lake & Unity Catalog",
+  "ingestion": "Databricks Data Ingestion",
+  "transformations": "Databricks PySpark & Spark SQL",
+  "modeling": "Databricks Medallion & Pipelines",
+  "jobs": "Databricks Lakeflow Jobs",
+  "cicd": "Databricks CI/CD & Bundles",
+  "troubleshooting": "Databricks Monitoring & Optimization",
+  "governance": "Databricks Governance & Security"
 }
