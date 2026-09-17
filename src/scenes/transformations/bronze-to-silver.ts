@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §1 bronze-to-silver — the module's spine, and the exam's heaviest topic. The six transforms sit in
 // their own band as tiles so "what actually changes" is countable; the `warn` closer carries the line

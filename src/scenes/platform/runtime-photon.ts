@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §10 runtime-photon — what every cluster boots (the DBR image and its variants), then Photon as a
 // drop-in beneath it. Photon sits in its own band with a single edge in, because the section's point

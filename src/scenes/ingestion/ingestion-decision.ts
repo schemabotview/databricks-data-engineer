@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §11 ingestion-decision — the course's closing cheat sheet, built like `compute-decision` in the
 // platform course: source SHAPE in the label, the pick in the sub, cols:2 so six rows fill the pane

@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §2 delta-log — what a Delta table IS on disk (data files + `_delta_log` beside them), then how the
 // commit buys each ACID letter. The four letters are tiles in one band so the section's claim — that

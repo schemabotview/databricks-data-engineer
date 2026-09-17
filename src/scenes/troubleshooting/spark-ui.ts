@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §3 spark-ui — three nested tabs, then the signal→diagnosis lookup that is the real content. The
 // habit the narration ends on drives the layout: read MAX vs MEDIAN first, because that one

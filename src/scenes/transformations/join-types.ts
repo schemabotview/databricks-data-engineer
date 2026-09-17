@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §4 join-types — the seven, grouped by WHAT THEY DO rather than listed flat. Seven 210-wide cards in
 // a row would be the thin-ribbon shape, and the families are the real teaching: the two Spark-specific

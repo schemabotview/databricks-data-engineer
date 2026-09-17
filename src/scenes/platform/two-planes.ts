@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §3 two-planes — the split the exam leans on: where your CODE runs vs. where your DATA lives. The
 // control plane (Databricks' account) holds management services and metadata only; the compute plane

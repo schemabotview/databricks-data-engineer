@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §7 promotion-flow — the pipeline, FOLDED into its two real stages rather than run as one flat
 // six-card chain. Flat it was ~1480×400, a 3.7 ribbon in a ~1.05 pane, so fitView fit the width and

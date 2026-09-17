@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 import { diagnosticFlow } from './diagnostic-flow'
 import { runHistory } from './run-history'
 import { sparkUi } from './spark-ui'

@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §5 workspace — the sidebar tour, deliberately wrapped in the ACCOUNT boundary so the section's real
 // payload lands visually: the Unity Catalog metastore lives at the ACCOUNT level, so governed data is

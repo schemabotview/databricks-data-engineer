@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §4 data-skew — the exam describes the symptom almost word for word, so the numbers are on the card
 // rather than paraphrased. The remedies are RANKED, and that ranking is the section: AQE skew-join is

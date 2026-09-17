@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §2 git-folders — the remote and the workspace folder are bidirectional, which is the whole feature:
 // Git inside the UI. The closing band draws the division of labour against bundles, because the two

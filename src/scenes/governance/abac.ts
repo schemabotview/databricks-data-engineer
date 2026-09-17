@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §6 abac — the section exists because per-table masks and filters DON'T SCALE, so the scene leads
 // with the three building blocks as a pipeline and closes on the payoff that makes it scale: a new

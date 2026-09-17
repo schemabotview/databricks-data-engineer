@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §8 inbound-paths — the long tail. The REST closer is a `warn` because it is the section's one real
 // trap: REST is a LANDING strategy, not a target. Once the JSON is a file on storage the normal

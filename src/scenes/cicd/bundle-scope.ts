@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §9 bundle-scope — in vs. out, and the closing band gives the REASON, which is what makes the
 // boundary memorable rather than a list: bundles and IaC have different lifecycles and blast radii.

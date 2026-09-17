@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §10 federation — the row the exam loves to plant in wrong answers, so the scene is built as a
 // two-sided judgement rather than a feature list: the mechanism on top, then when it is right against

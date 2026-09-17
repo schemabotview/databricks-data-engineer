@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §4 platform-stack — the TECHNICAL dependency stack, the counterpart to §2's product pillars: cheap
 // open storage at the base, transactions and governance in the middle, every engine on top sharing

@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §10 gold-decision — the course closer, built like the platform and ingestion decision sheets:
 // scenario in the label, the pick in the sub, cols:2 so six rows fill the pane. The slide carries all

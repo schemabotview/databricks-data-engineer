@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §8 audit-log — two system tables, and the point the narration ends on: this is queryable SQL, not
 // just a UI, so you can build alerts and dashboards on access patterns the same way you would on any

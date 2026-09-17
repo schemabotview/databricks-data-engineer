@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §9 gold-patterns — the choice is made by CONSUMER, so each side names its reader rather than its
 // shape alone. The closing band is the bank's actual layout, which is where the whole course lands:

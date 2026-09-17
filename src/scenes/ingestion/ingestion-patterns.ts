@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §1 ingestion-patterns — the three shapes every source falls into, then the trigger vocabulary the
 // exam tests by name. Incremental is `service` (the brand colour) because that is where most

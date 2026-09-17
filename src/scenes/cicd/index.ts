@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 import { cicdProblem } from './cicd-problem'
 import { gitFolders } from './git-folders'
 import { promotionFlow } from './promotion-flow'

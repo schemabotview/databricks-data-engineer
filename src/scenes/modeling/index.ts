@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 import { medallion } from './medallion'
 import { goldObjects } from './gold-objects'
 import { materializedView } from './materialized-view'

@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §3 auto-loader — the mechanism, LR so the pipeline reads left to right and the scene spans the
 // pane. The two locations sit in their own band because together they are what makes the write

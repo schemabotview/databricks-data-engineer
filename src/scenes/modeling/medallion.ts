@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §1 medallion — the exam tests ONE skill here: read a description, name the layer. So each layer's
 // card carries its own defining property rather than a generic description, and the three run LR so

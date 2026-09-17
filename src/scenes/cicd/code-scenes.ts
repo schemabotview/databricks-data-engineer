@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §3–§6 — the bundle code block, the densest run after delta-uc's SQL. YAML and bash both use `#` as
 // the native comment, so the commentary reads inline. Lines stay at or under CODE_MIN_COLS (76).

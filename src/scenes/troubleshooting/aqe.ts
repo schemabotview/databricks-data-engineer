@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §7 aqe — the course's through-line lands here: the three big problems the last three sections
 // covered (skew, partition sizing, join strategy) are exactly the three things AQE fixes at runtime.

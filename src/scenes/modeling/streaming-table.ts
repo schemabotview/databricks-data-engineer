@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §4 streaming-table — the pipeline LR, with the point of the section in the middle node: read_files
 // in STREAM mode IS the SQL surface of Auto Loader, same checkpoint and exactly-once. The closer

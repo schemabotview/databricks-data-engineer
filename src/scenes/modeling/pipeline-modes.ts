@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §8 pipeline-modes — the section exists because these two axes get confused, so the scene's whole
 // job is to hold them APART: two side-by-side bands, each with its own pair, and a `warn` closer

@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §6 ingestion-compare — you don't pick on correctness (both are idempotent), you pick on operational
 // shape. Each side carries its own idempotency mechanism and its best fit as tiles, so the comparison

@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §3, §4, §5, §7 — the governance SQL block, the concept's last code run. Same house rules: lines at
 // or under CODE_MIN_COLS (76), and no `sub` on a SQL card (codeLines would append it as a `#`

@@ -1,4 +1,4 @@
-import type { Scene } from '../render-engine'
+import type { Scene } from '@graphlearning/flow'
 import { platformScenes } from './platform'
 import { deltaUcScenes } from './delta-uc'
 import { ingestionScenes } from './ingestion'

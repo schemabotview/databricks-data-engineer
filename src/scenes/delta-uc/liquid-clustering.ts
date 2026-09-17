@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §7 liquid-clustering — the one-time bet you used to be locked into, then the single evolvable
 // property that replaces BOTH partitioning and ZORDER. The closing card carries the exam line

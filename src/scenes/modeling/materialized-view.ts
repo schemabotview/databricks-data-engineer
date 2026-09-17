@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §3 materialized-view — the mechanism LR, because what makes an MV an MV is that the result is
 // STORED between the query and the reader. The chain stops at the stored result rather than running

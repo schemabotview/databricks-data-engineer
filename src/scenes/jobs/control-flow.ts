@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §4 control-flow — three primitives, and the `warn` closer is the one the exam plants distractors
 // around: a flaky API is a RETRIES problem, not a for_each or a continuous-trigger problem. The

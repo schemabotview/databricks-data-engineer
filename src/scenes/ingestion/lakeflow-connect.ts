@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §7 lakeflow-connect — the three tiers are PEERS (all land in UC-governed Delta); what differs is
 // who operates the moving parts, which is why the subs read as operator rather than capability. The

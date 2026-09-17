@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §3 task-types — for each of the four, the exam wants two facts: what it runs and WHERE it runs. So
 // the compute target is the sub on every card, since that is the discriminator (a dashboard needs a

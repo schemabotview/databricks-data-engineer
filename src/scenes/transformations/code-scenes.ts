@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // The transformations code block — seven of the course's eleven sections. All Python, so `#` is the
 // native comment and the commentary reads inline. Same house rule as every card: source lines at or

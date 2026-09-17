@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §8 compute-decision — the cheat sheet the exam actually drills. Each card is a workload SHAPE in
 // the label and the compute that fits in the sub, so the scene reads as a lookup table rather than a

@@ -6,7 +6,10 @@ read that first; this file is Databricks-specific.
 
 ## What this is
 
-A standalone concept app: its own scenes + courses + a bundled render-engine (`src/render-engine`).
+A standalone concept app: its own scenes + courses. The render engine is the **`@graphlearning/flow`**
+package (repo `schemabotview/ui-flow`) — pinned by version, so an engine change never lands here until
+this repo upgrades and re-verifies. Scene `service` nodes use the engine's shared orange, not
+`--brand`; the Databricks red still drives the app chrome.
 Each **section** = `(scene, slide, narration)`; the left scene is a react-flow diagram or a code
 snippet, the right slide is markdown. One section = one slide = one video segment.
 
@@ -31,7 +34,6 @@ app-side in the retired `graphl-movie`), and this engine's declarative `Scene` i
 ## Layout
 
 ```
-src/render-engine/   layout + renderer (import from the barrel index, never deep paths)
 src/scenes/          scenes + registry (a scene can be shared across sections)
 src/content/         courses → sections + registry
 src/section/         scene-left / slide-right composited view (responsive)

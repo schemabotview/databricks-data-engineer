@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §9 managed-vs-external — the one difference (who owns the FILES) and everything it drives. Each
 // flavour is a band holding what it gets, so the asymmetry the exam tests — Predictive Optimization

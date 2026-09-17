@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §9 common-failures — four startup modes, each labelled by the ERROR STRING, because that is how a
 // scenario question names it. The `warn` tell is the trap: InstanceLimitExceeded is cloud quota, not

@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 import { jobAnatomy } from './job-anatomy'
 import { jobDag } from './job-dag'
 import { taskTypes } from './task-types'

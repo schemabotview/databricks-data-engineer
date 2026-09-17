@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §9 cost-model — the bill split in two (DBUs to Databricks + VM cost to your cloud), then the two
 // knobs that control it. The `warn` comparison card carries the exam's fact — job DBUs are cheaper

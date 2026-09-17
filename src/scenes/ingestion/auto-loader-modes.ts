@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §4 auto-loader-modes — the discovery trade. Listing's ceiling is a `warn` tile because that ceiling
 // IS the reason to switch; notification's three queue services are tiles so "a managed event queue"

@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §2 gold-objects — the five, each with the property that decides it: whether it STORES data, and
 // what it is right for. The `warn` closer is the trade-off the exam tests directly — a view

@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 import { deltaVsParquet } from './delta-vs-parquet'
 import { deltaLog } from './delta-log'
 import { codeTimeTravel, codeSchema, codeMerge, codeMaintenance } from './code-scenes'

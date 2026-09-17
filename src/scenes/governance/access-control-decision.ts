@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §9 access-control-decision — the concept's FINAL scene. Built like every other closing sheet:
 // scenario in the label, the control in the sub, cols:2. Weighted to the three tells the narration

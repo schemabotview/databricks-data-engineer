@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §6 disk-spill — the "why it hurts" band is drawn as the actual round trip, because that sequence is
 // the reason spill costs orders of magnitude. The `warn` closer carries the classic trap: the

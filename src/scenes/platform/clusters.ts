@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §6 clusters — anatomy first (a cluster IS a driver + workers), then the two kinds, then the rule of
 // thumb as a `warn` card because running production on all-purpose is the classic anti-pattern the

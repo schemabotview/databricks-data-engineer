@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §6 job-compute — the fact people miss is that compute is a PER-TASK choice, so the scene leads with
 // the four options side by side and closes on cluster reuse (pay the startup once). All-purpose wears

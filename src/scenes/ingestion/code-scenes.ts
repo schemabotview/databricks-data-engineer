@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §2, §5, §9 — the ingestion code block. Same house rules as the delta-uc cards: every source line at
 // or under CODE_MIN_COLS (76), and no `sub` on a SQL card (codeLines appends it as a `#` comment).

@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 import { securityHierarchy } from './security-hierarchy'
 import { privileges } from './privileges'
 import { abac } from './abac'

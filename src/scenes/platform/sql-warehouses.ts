@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §7 sql-warehouses — the three warehouse types on top, then the section's wider point below:
 // serverless is a MODALITY available across four surfaces, not a fourth warehouse type. Drawing the

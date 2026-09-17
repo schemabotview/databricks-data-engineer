@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §5–§7 — the pipeline code block. §5 and §6 are Python (`#` comments read natively); §7 is SQL, so
 // its commentary is inline `--` and it sets no `sub` (codeLines would append it as a `#` comment).

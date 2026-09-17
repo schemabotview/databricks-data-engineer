@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §8 predictive-optimization — two features, one goal: a healthy Delta table with no hand-written
 // maintenance job. The `warn` note is the constraint the exam tests — Predictive Optimization is

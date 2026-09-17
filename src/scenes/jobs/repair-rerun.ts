@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §9 repair-rerun — the two UI views answer different questions, which is the section's point: run
 // history shows a TREND over runs, the task graph shows the BLOCKER within one run. The repair band

@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §2 privileges — a recognition list the exam expects on sight, so each card carries what the
 // privilege LETS YOU DO rather than a restatement of its name. Ownership sits in its own band

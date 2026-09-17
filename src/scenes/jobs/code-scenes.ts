@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §7 and §10 — the jobs code block. §7 is Python; §10 is YAML, where `#` is also the native comment,
 // so both read naturally. Lines stay at or under CODE_MIN_COLS (76).

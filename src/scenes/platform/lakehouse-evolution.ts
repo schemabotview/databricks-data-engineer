@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §1 lakehouse-evolution — why the two-system era ended. Two "before" systems side by side, each a
 // container holding its WIN tile over its CATCH tile (`warn` red): the warehouse's rigid schema and

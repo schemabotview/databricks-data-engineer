@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §1 delta-vs-parquet — the three things that keep breaking on raw Parquet, then the one thing Delta
 // adds. Each failure is a `warn` card because each is precisely what a later guarantee fixes; the

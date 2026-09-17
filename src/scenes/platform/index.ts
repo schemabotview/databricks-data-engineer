@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 import { lakehouseEvolution } from './lakehouse-evolution'
 import { platformPillars } from './platform-pillars'
 import { twoPlanes } from './two-planes'

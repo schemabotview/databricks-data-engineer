@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §5 broadcast-join — the problem band on top (both sides shuffle) and the fix below (ship the small
 // side, big side never moves). Drawing the three executors as tiles is what makes "a full copy to

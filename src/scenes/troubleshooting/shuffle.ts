@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §5 shuffle — the narration ends on a three-verb model (avoid · shrink · balance), which is a better
 // spine than a flat remedy list because it says WHY each remedy works. Each verb holds its own

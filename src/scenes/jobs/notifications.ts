@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §8 notifications — four hooks, and two exam tells that are really about picking the RIGHT hook:
 // paging wants a webhook (not email), and a production job wants a service principal (not a person).

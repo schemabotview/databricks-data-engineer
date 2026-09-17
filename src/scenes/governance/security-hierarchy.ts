@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §1 security-hierarchy — drawn as actual NESTING rather than a four-card chain, because the
 // section's claim is that UC permissions are a strict TREE and a grant flows down to everything

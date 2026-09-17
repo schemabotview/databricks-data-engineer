@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 import { ingestionPatterns } from './ingestion-patterns'
 import { autoLoader } from './auto-loader'
 import { autoLoaderModes } from './auto-loader-modes'

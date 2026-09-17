@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §3–§6 — the SQL block. Each is ONE code node: a `kind: 'code'` card renders the IDE window and the
 // layout sizes it from the content, so the whole scene is the card.

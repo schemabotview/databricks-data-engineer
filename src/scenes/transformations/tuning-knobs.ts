@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §10 tuning-knobs — the four keys the exam names verbatim, each carrying its default, because the
 // default is what the question quotes. The closer is the classic question itself: 200 GB across 200

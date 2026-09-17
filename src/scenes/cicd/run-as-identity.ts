@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §8 run-as-identity — the exam sometimes conflates two DIFFERENT questions, so the scene separates
 // them first: who deploys the bundle vs. who runs the resources afterwards. The `warn` closer gives

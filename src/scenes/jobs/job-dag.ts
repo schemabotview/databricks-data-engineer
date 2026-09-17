@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §2 job-dag — the one scene in the concept that is literally the thing it describes: a real DAG,
 // which this engine lays out natively from the edges. Three roots fanning into silver_build is the

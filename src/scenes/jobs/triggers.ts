@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §5 triggers — the exam frames nearly every trigger question as ONE tradeoff, time-based vs.
 // data-driven, so the scene splits on that axis rather than listing five options flat. The `warn`

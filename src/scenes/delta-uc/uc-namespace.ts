@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §8 uc-namespace — the metastore sits ABOVE the name, not inside it: `catalog.schema.object` is the
 // three-part name, and the metastore is the regional container that holds it. Drawn as one flat

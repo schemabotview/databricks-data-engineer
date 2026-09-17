@@ -28,7 +28,6 @@ Played in syllabus order (`→` past the end of one rolls into the next). Per-se
 
 ```
 src/
-  render-engine/   layout + react-flow / code-snippet renderer (folder, not a package)
   scenes/          hand-authored scenes + registry
   content/         courses → sections (one file per section) + registry
   section/         composited scene-left / slide-right view (responsive)

@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §1 job-anatomy — the vocabulary, and getting it right makes the rest of the course fall into place.
 // Task is drawn INSIDE Job because that nesting is the relationship; Run sits beside them as the

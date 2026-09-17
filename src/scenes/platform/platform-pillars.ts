@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §2 platform-pillars — the PRODUCT framing of the Data Intelligence Platform: five workloads all
 // reading one governed copy, over the three layers Databricks describes it in. (§4's `platform-stack`

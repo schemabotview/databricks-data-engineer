@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 import { bronzeToSilver } from './bronze-to-silver'
 import { joinTypes } from './join-types'
 import { broadcastJoin } from './broadcast-join'

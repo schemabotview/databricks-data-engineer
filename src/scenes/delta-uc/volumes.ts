@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §10 volumes — the tables/volumes split (rows vs. files) drawn as peers under Unity Catalog, then
 // the two volume flavours mirroring the two table flavours from §9. The `warn` closer is the exam's

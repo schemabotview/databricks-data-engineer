@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §1 cicd-problem — both pre-bundle options were bad in the SAME way (nothing said "this pipeline,
 // plus this job, plus these notebooks, deployed as one unit"), so both wear `warn` and the fix band

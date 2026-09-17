@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §1 diagnostic-flow — the sequence, folded by WHICH UI YOU ARE IN rather than run as one five-card
 // chain (which would be ~1270 wide). The fold names the real boundary: you localise in the Jobs UI,

@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §10 oom-patterns — OOM comes in two flavours and the fix depends entirely on WHICH SIDE ran out, so
 // the scene splits on that first. Both sides list memory LAST on purpose: the exam consistently

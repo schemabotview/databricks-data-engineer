@@ -1,4 +1,4 @@
-import type { Scene } from '../../render-engine'
+import type { Scene } from '@graphlearning/flow'
 
 // §2 run-history — the section's claim is that the SHAPE of the sparkline is itself the first
 // diagnosis, so each shape card carries its cause directly and the band below names where each one
