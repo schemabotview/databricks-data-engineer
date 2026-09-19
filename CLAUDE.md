@@ -36,9 +36,12 @@ app-side in the retired `graphl-movie`), and this engine's declarative `Scene` i
 ```
 src/scenes/          scenes + registry (a scene can be shared across sections)
 src/content/         courses → sections + registry
-src/section/         scene-left / slide-right composited view (responsive)
-src/App.tsx          hash router: #/<course-section> (section) · #/<scene> (individual)
-scripts/             record-course · record-reels · thumb · gen-descriptions · colab · audio-manifest
+src/main.tsx         mounts <ConceptApp> — the whole app; the router, section view,
+                     slide panel, catalog and narration are @graphlearning/shell
+src/theme.css        this repo's three brand tokens — its entire design surface
+scripts/             concept.json (publishing identity) · titles.json · colab notebook ·
+                     audio-manifest. The record/capture/thumb TOOLS are
+                     @graphlearning/shell bins (npm run record · thumb · gen:desc · …)
 public/audio/<course>/   narration wavs
 ```
 
